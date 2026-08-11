@@ -154,10 +154,36 @@ The raw `&` is right for a JSON payload and for a dialog that takes the address 
 
 Build the sigil one of these two ways rather than cutting the URL back out of another platform's output. That output is meant to be pasted verbatim; a change to its wrapping would break the cut silently.
 
+## Guarding against a broken colophon
+
+A colophon can arrive damaged in two ways, and both are invisible to whoever caused them.
+A sigil can be written **without its link** — then it says nothing at all, because the model, the date and the division of labour live on the page behind it.
+Or the link can be built correctly and the **label** damaged in transit: the URL half is percent-encoded throughout, and an agent copying the line into a posting script wrote `%E2%80%BB` — the encoded form of the character — where the literal one belongs.
+The link still worked; the reader saw eight literal characters.
+
+Nothing in `sigil.py` can prevent either: the damage happens after it has printed the right answer.
+The check therefore lives at the write path:
+
+```bash
+python3 skills/colophon/scripts/check.py "Ordered the parts. ※"   # exit 1 + reason on stderr
+```
+
+In Claude Code the plugin wires it up for you as a `PreToolUse` hook (`hooks/hooks.json`).
+It watches `Bash` and MCP calls — where outgoing text lives — and denies a call carrying a broken mark, handing the reason back so the model can fix the text and repeat the call.
+Local files (`Write`, `Edit`) are deliberately not covered: there a sigil is content, not a message.
+
+Elsewhere, call `find_violations` from `check.py` at whatever assembles your outgoing text.
+The rule is the reusable part; the hook is one wiring of it.
+
+The rule keys on **position, not presence**: only a sigil in trailing position is a mark and must be a link.
+Mid-sentence it is a mention — as in this paragraph — and stays untouched.
+A presence check would reject correct writing, which is how a guard earns its way back out of a codebase.
+
 ## Development
 
 ```bash
 python3 skills/colophon/scripts/test_sigil.py   # tests, stdlib only
+python3 skills/colophon/scripts/test_check.py   # guard tests, incl. the hook end to end
 python3 -m http.server 8000                     # preview the page locally
 COLOPHON_BASE=http://localhost:8000/ python3 skills/colophon/scripts/sigil.py …
 ```

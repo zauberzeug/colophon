@@ -211,8 +211,23 @@ Do not cut the URL out of another platform's output either; that output is meant
 - `--tooltip` applies to `--platform github` and `--platform html` — the two dialects with a native hover title; elsewhere it warns on stderr and the link stays correct.
 - Env `COLOPHON_BASE` overrides the base URL (for local testing, say).
 
+## The mark is the link
+
+Two failures put a broken colophon in front of a reader, and neither is visible to the agent that caused it: a sigil **without** a link says nothing, and a link whose **label** is not the literal character (`%E2%80%BB`, or a word) renders as that text instead of the mark.
+Only the URL is percent-encoded; everything after `|` in `<url|label>`, or inside `[…]` in `[label](url)`, is display text.
+
+So: never type the character into a link by hand, and never retype the script's output — paste it.
+
+```bash
+python3 scripts/check.py "Ordered the parts. ※"   # exit 1 + reason on stderr
+```
+
+Installed as a plugin, this runs by itself as a `PreToolUse` hook on `Bash` and MCP calls.
+It checks position, not presence: a sigil at the end of a text is a mark and must be a link; mid-sentence it is a mention and is left alone.
+
 ## Tests
 
 ```bash
 python3 scripts/test_sigil.py
+python3 scripts/test_check.py
 ```
