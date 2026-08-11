@@ -83,8 +83,10 @@ A wrong model name is worse than an imprecise one.
 
 ## Calling the script
 
-Do not build the encoding or the link dialects by hand — always call the script and paste its output verbatim.
+Do not build the encoding or the link dialects by hand — always call the script.
 It prints exactly one line to stdout.
+For the four platform dialects that line is the finished sigil: paste it verbatim.
+`--platform url` is the exception — it prints a bare URL that you put into the target's href field yourself, see "Building the link yourself" below.
 
 ```bash
 python3 scripts/sigil.py --platform <slack|jira|github|trello|url> \
@@ -159,6 +161,9 @@ python3 scripts/sigil.py --platform url --model claude-opus-5 \
 ```
 
 The reader still sees only `※`; the URL sits in the attribute.
+
+The URL separates its parameters with raw `&`.
+JSON payloads like the ADF above take it as it is, but in XML-parsed markup — XHTML, Confluence storage format — an unescaped `&` breaks the whole document: write `&amp;` there.
 Do not cut the URL out of another platform's output instead — that output is meant to be pasted verbatim.
 
 ## Further options

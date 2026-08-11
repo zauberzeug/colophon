@@ -131,6 +131,9 @@ The label stays `※` — it just moves to wherever the target keeps its link te
 {"type": "text", "text": "※", "marks": [{"type": "link", "attrs": {"href": "<URL>"}}]}
 ```
 
+JSON payloads take the URL as it is.
+In markup parsed as XML — XHTML, Confluence storage format — the raw `&` between the parameters has to become `&amp;`, otherwise the document doesn't parse.
+
 Build the sigil this way rather than cutting the URL back out of another platform's output.
 That output is meant to be pasted verbatim; a change to its wrapping would break the cut silently.
 
