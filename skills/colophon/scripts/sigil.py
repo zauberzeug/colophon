@@ -5,6 +5,9 @@ Prints exactly one line to stdout. Warnings go to stderr so the output stays
 usable in a pipe.
 
     sigil.py --platform slack --model claude-opus-5 --text "Drafted by the model."
+
+`--platform url` prints the bare URL instead of a link, for callers that build
+the link themselves (Jira ADF, HTML, an API payload).
 """
 
 import argparse
@@ -19,6 +22,11 @@ DEFAULT_BASE = "https://zauberzeug.github.io/colophon/"
 SIGIL = "※"  # U+203B REFERENCE MARK
 
 PLATFORMS = ("slack", "jira", "github", "trello")
+
+# `url` is not a platform: it is the escape hatch for callers that build the
+# link themselves and only need the href. Kept out of PLATFORMS so that stays
+# the list of link dialects.
+TARGETS = PLATFORMS + ("url",)
 
 
 def base_url():
@@ -53,6 +61,8 @@ def escape_markdown_title(text):
 
 def format_link(platform, url, tooltip=None):
     """Wrap the URL in the link syntax of the target platform."""
+    if platform == "url":
+        return url
     if platform == "slack":
         return "<%s|%s>" % (url, SIGIL)
     if platform == "jira":
@@ -75,7 +85,13 @@ def parse_args(argv=None):
         epilog="The base URL defaults to %s and can be overridden "
         "with the COLOPHON_BASE environment variable." % DEFAULT_BASE,
     )
-    parser.add_argument("--platform", required=True, choices=PLATFORMS)
+    parser.add_argument(
+        "--platform",
+        required=True,
+        choices=TARGETS,
+        help="link dialect to emit; `url` prints the bare URL for callers that "
+        "build the link themselves",
+    )
     parser.add_argument("--model", required=True, help="model identifier, e.g. claude-opus-5")
     parser.add_argument(
         "--text",
