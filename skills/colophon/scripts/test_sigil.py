@@ -2,11 +2,13 @@
 """Tests for sigil.py — run with: python3 test_sigil.py"""
 
 import contextlib
+import html
 import io
 import os
 import sys
 import unittest
 from urllib.parse import parse_qs, unquote, urlsplit
+from xml.etree import ElementTree
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
@@ -101,6 +103,47 @@ class TestPlatforms(unittest.TestCase):
         self.assertTrue(out.startswith("[※](https://"))
         self.assertTrue(out.endswith(")"))
 
+    def test_html_is_an_anchor(self):
+        out, _ = run(["--platform", "html"] + self.ARGS)
+        self.assertTrue(out.startswith('<a href="https://'))
+        self.assertTrue(out.endswith(">※</a>"))
+
+    def test_html_escapes_ampersands_in_the_href(self):
+        """Bare, the & is a parse error in XML and a character reference in HTML."""
+        out, _ = run(["--platform", "html", "--model", "claude-opus-5",
+                      "--text", "Drafted by the model.", "--self-posted"])
+        href = out.split('"')[1]
+        self.assertIn("&amp;", href)
+        self.assertNotIn("&t=", href)
+        self.assertNotIn("&p=", href)
+
+    def test_html_anchor_parses_as_xml(self):
+        """Confluence storage format and XHTML reject a document with a bare &."""
+        out, _ = run(["--platform", "html", "--self-posted", "--date", "2026-08-10"]
+                     + self.ARGS)
+        node = ElementTree.fromstring(out)
+        self.assertEqual(node.tag, "a")
+        self.assertEqual(node.text, sigil.SIGIL)
+        self.assertEqual(
+            node.attrib["href"],
+            sigil.build_url("claude-opus-5", "Drafted by the model.",
+                            self_posted=True, date="2026-08-10"),
+        )
+
+    def test_html_href_decodes_to_the_canonical_url(self):
+        out, _ = run(["--platform", "html"] + self.ARGS)
+        href = html.unescape(out.split('"')[1])
+        self.assertEqual(
+            href, sigil.build_url("claude-opus-5", "Drafted by the model.")
+        )
+
+    def test_html_escapes_markup_from_the_free_text(self):
+        out, _ = run(["--platform", "html", "--model", "claude-opus-5",
+                      "--text", 'He said "<b>hi</b>" & left.'])
+        self.assertEqual(out.split('"')[2], ">※</a>")
+        href = html.unescape(out.split('"')[1])
+        self.assertEqual(params_of(href)["t"][0], 'He said "<b>hi</b>" & left.')
+
     def test_output_is_exactly_one_line(self):
         for platform in sigil.TARGETS:
             with self.subTest(platform=platform):
@@ -128,7 +171,8 @@ class TestTooltip(unittest.TestCase):
         self.assertEqual(err, "")
 
     def test_tooltip_on_other_platform_warns_but_link_is_correct(self):
-        for platform in ("slack", "jira", "trello"):
+        # Derived, not hardcoded: a new target is covered here the day it lands.
+        for platform in [t for t in sigil.TARGETS if t not in sigil.TOOLTIP_TARGETS]:
             with self.subTest(platform=platform):
                 out, err = run(
                     [
@@ -147,6 +191,37 @@ class TestTooltip(unittest.TestCase):
                     ]
                 )
                 self.assertEqual(out, plain)
+
+    def test_html_tooltip_is_a_title_attribute(self):
+        out, err = run(
+            [
+                "--platform", "html",
+                "--model", "claude-opus-5",
+                "--text", "Wording from the model, substance from the author.",
+                "--tooltip",
+            ]
+        )
+        self.assertEqual(err, "")
+        node = ElementTree.fromstring(out)
+        self.assertEqual(
+            node.attrib["title"],
+            "claude-opus-5: Wording from the model, substance from the author.",
+        )
+
+    def test_quotes_in_html_tooltip_do_not_break_the_attribute(self):
+        out, _ = run(
+            [
+                "--platform", "html",
+                "--model", "claude-opus-5",
+                "--text", 'They said "hello" & left.',
+                "--tooltip",
+            ]
+        )
+        node = ElementTree.fromstring(out)
+        self.assertEqual(
+            node.attrib["title"], 'claude-opus-5: They said "hello" & left.'
+        )
+        self.assertEqual(node.text, sigil.SIGIL)
 
     def test_quotes_in_tooltip_are_escaped(self):
         out, _ = run(
@@ -265,12 +340,14 @@ class TestUrlTarget(unittest.TestCase):
         for char in ("[", "]", "<", ">", "|", sigil.SIGIL):
             self.assertNotIn(char, out)
 
-    def test_it_is_the_same_url_the_platforms_wrap(self):
+    def test_it_is_the_same_url_every_other_target_wraps(self):
         bare, _ = run(["--platform", "url"] + self.ARGS)
-        for platform in sigil.PLATFORMS:
-            with self.subTest(platform=platform):
-                wrapped, _ = run(["--platform", platform] + self.ARGS)
-                self.assertIn(bare, wrapped)
+        for target in [t for t in sigil.TARGETS if t != "url"]:
+            with self.subTest(target=target):
+                wrapped, _ = run(["--platform", target] + self.ARGS)
+                # Unescaped: the html dialect writes the same URL with `&amp;`.
+                # A no-op for the dialects that need no escaping.
+                self.assertIn(bare, html.unescape(wrapped))
 
     def test_optional_parameters_still_apply(self):
         out, _ = run(
@@ -288,10 +365,11 @@ class TestUrlTarget(unittest.TestCase):
         self.assertTrue(out.startswith("https://"))
         self.assertNotIn('"', out)
 
-    def test_url_is_not_listed_as_a_platform(self):
-        """PLATFORMS stays the list of link dialects; TARGETS adds the escape hatch."""
-        self.assertNotIn("url", sigil.PLATFORMS)
-        self.assertIn("url", sigil.TARGETS)
+    def test_neither_url_nor_html_is_listed_as_a_platform(self):
+        """PLATFORMS stays the destinations; TARGETS adds the two generic ones."""
+        for target in ("url", "html"):
+            self.assertNotIn(target, sigil.PLATFORMS)
+            self.assertIn(target, sigil.TARGETS)
 
 
 class TestBaseUrl(unittest.TestCase):

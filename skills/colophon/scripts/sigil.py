@@ -6,12 +6,15 @@ usable in a pipe.
 
     sigil.py --platform slack --model claude-opus-5 --text "Drafted by the model."
 
-`--platform url` prints the bare URL instead of a link, for callers that build
-the link themselves (Jira ADF, HTML, an API payload).
+Two targets are not platforms: `--platform html` emits an anchor for anything
+whose body is markup (an HTML mail, a Confluence page), and `--platform url`
+prints the bare URL for callers that build the link themselves (Jira ADF, an
+API payload that keeps href and label apart).
 """
 
 import argparse
 import datetime
+import html
 import os
 import re
 import sys
@@ -23,10 +26,15 @@ SIGIL = "※"  # U+203B REFERENCE MARK
 
 PLATFORMS = ("slack", "jira", "github", "trello")
 
-# `url` is not a platform: it is the escape hatch for callers that build the
-# link themselves and only need the href. Kept out of PLATFORMS so that stays
-# the list of link dialects.
-TARGETS = PLATFORMS + ("url",)
+# Neither of these is a platform, so both stay out of PLATFORMS and that
+# remains the list of destinations whose dialect you cannot guess from the
+# name. `html` is a dialect named after its syntax — an HTML mail body is the
+# common case, but so is a Confluence page. `url` emits no link at all, for
+# callers that build one themselves and only need the href.
+TARGETS = PLATFORMS + ("html", "url")
+
+# Dialects whose syntax carries a native hover title.
+TOOLTIP_TARGETS = ("github", "html")
 
 
 def base_url():
@@ -67,6 +75,17 @@ def format_link(platform, url, tooltip=None):
         return "<%s|%s>" % (url, SIGIL)
     if platform == "jira":
         return "[%s|%s]" % (SIGIL, url)
+    if platform == "html":
+        # The `&` separating the fragment parameters has to be written `&amp;`:
+        # bare, it is a hard parse error wherever the markup is read as XML
+        # (Confluence storage format, XHTML mail), and an HTML parser may take
+        # it for a character reference. Escaped, every parser hands the
+        # original URL back. The tooltip goes through the same escaping: it
+        # carries the free text raw, quotes and angle brackets included.
+        attrs = 'href="%s"' % html.escape(url, quote=True)
+        if tooltip:
+            attrs += ' title="%s"' % html.escape(tooltip, quote=True)
+        return "<a %s>%s</a>" % (attrs, SIGIL)
     if platform in ("github", "trello"):
         if platform == "github" and tooltip:
             return '[%s](%s "%s")' % (SIGIL, url, escape_markdown_title(tooltip))
@@ -89,8 +108,8 @@ def parse_args(argv=None):
         "--platform",
         required=True,
         choices=TARGETS,
-        help="link dialect to emit; `url` prints the bare URL for callers that "
-        "build the link themselves",
+        help="link dialect to emit; `html` emits an anchor for markup bodies, "
+        "`url` the bare URL for callers that build the link themselves",
     )
     parser.add_argument("--model", required=True, help="model identifier, e.g. claude-opus-5")
     parser.add_argument(
@@ -103,7 +122,7 @@ def parse_args(argv=None):
     parser.add_argument(
         "--tooltip",
         action="store_true",
-        help="append a hover title; only effective with --platform github",
+        help="append a hover title; only effective with --platform github or html",
     )
     parser.add_argument(
         "--self-posted",
@@ -138,11 +157,12 @@ def main(argv=None):
 
     tooltip = None
     if args.tooltip:
-        if args.platform == "github":
+        if args.platform in TOOLTIP_TARGETS:
             tooltip = tooltip_text(args.model, args.text)
         else:
             print(
-                "note: --tooltip only applies to --platform github, ignoring it.",
+                "note: --tooltip only applies to --platform %s, ignoring it."
+                % " or ".join(TOOLTIP_TARGETS),
                 file=sys.stderr,
             )
 
