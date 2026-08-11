@@ -110,9 +110,34 @@ One codepoint, no variation selectors, no modifiers.
 | **Gmail** | `<a href="URL">※</a>` | no |
 
 - **GitHub:** the tooltip is a bonus, not a mechanism — there is no hover on mobile, the click must work on its own.
-- **Jira:** wiki markup is converted by Cloud on paste; when building ADF directly, the URL becomes the `href` of a link mark on `※`.
+- **Jira:** wiki markup is converted by Cloud on paste; when building ADF directly, ask for `--platform url` and make that URL the `href` of a link mark on `※`.
 - **Slack:** when posting via API, set `unfurl_links: false`, or every message drags a preview card of this page behind it.
 - **Gmail:** the `&` between fragment parameters is escaped as `&amp;`, otherwise the href ends at the first parameter and the declared text is lost. Needs an HTML body — in plain text a link cannot be represented, and the bare URL is three lines of noise where the point was one quiet character. Put the sigil on the signature line, after the sender's name.
+
+## Building the link yourself
+
+Not every target takes a string with markup.
+Jira comments written as ADF, HTML and most API payloads carry the label and the href in separate fields — there the wiki or Markdown wrapping has nothing to attach to and would end up as literal characters in the text.
+
+For those, `--platform url` prints the bare URL and nothing else:
+
+```bash
+$ python3 skills/colophon/scripts/sigil.py --platform url --model claude-opus-5 \
+    --text "Wording from the model, substance from the author."
+https://zauberzeug.github.io/colophon/#m=claude-opus-5&t=Wording%20from%20the%20model…
+```
+
+The label stays `※` — it just moves to wherever the target keeps its link text. In ADF:
+
+```json
+{"type": "text", "text": "※", "marks": [{"type": "link", "attrs": {"href": "<URL>"}}]}
+```
+
+JSON payloads take the URL as it is.
+In markup parsed as XML — XHTML, Confluence storage format — the raw `&` between the parameters has to become `&amp;`, otherwise the document doesn't parse.
+
+Build the sigil this way rather than cutting the URL back out of another platform's output.
+That output is meant to be pasted verbatim; a change to its wrapping would break the cut silently.
 
 ## Development
 

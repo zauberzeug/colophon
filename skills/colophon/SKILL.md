@@ -83,11 +83,13 @@ A wrong model name is worse than an imprecise one.
 
 ## Calling the script
 
-Do not build the encoding or the link dialects by hand — always call the script and paste its output verbatim.
+Do not build the encoding or the link dialects by hand — always call the script.
 It prints exactly one line to stdout.
+For the four platform dialects that line is the finished sigil: paste it verbatim.
+`--platform url` is the exception — it prints a bare URL that you put into the target's href field yourself, see "Building the link yourself" below.
 
 ```bash
-python3 scripts/sigil.py --platform <slack|jira|github|trello|gmail> \
+python3 scripts/sigil.py --platform <slack|jira|github|trello|gmail|url> \
                          --model <id> \
                          --text "<free text>" \
                          [--date YYYY-MM-DD] [--agent <id>] [--tooltip] [--self-posted]
@@ -109,7 +111,7 @@ python3 scripts/sigil.py --platform slack --model claude-opus-5 \
 ### Jira
 
 Wiki markup works on Server/DC and is converted by Cloud on paste — when in doubt, use it.
-If you build ADF directly, the same URL string becomes the `href` of a link mark on the text `※`.
+If you build ADF directly, take `--platform url` and make that URL the `href` of a link mark on the text `※` — see "Building the link yourself" below.
 
 ```bash
 python3 scripts/sigil.py --platform jira --model claude-opus-5 \
@@ -162,6 +164,26 @@ Put it on the signature line, after the sender's name and separated by a space. 
 This needs an HTML body. Plain text cannot carry a link, and pasting the bare URL turns one quiet character into three lines of noise — in a plain-text mail leave the sigil off and say in the text that it was drafted with AI support.
 
 Mark mail that is **work product**: a status report to an external party, a specification, minutes, anything that will be read later without the surrounding conversation. A short personal reply stays unmarked, as everywhere else.
+
+### Building the link yourself
+
+`--platform url` prints the bare URL and nothing else.
+Use it when the target keeps label and href in separate fields and cannot take a string with markup — Jira ADF, HTML, most API payloads.
+
+```bash
+python3 scripts/sigil.py --platform url --model claude-opus-5 \
+  --text "Wording from the model, substance from the author."
+```
+
+```json
+{"type": "text", "text": "※", "marks": [{"type": "link", "attrs": {"href": "<URL>"}}]}
+```
+
+The reader still sees only `※`; the URL sits in the attribute.
+
+The URL separates its parameters with raw `&`.
+JSON payloads like the ADF above take it as it is, but in XML-parsed markup — XHTML, Confluence storage format — an unescaped `&` breaks the whole document: write `&amp;` there.
+Do not cut the URL out of another platform's output instead — that output is meant to be pasted verbatim.
 
 ## Further options
 
