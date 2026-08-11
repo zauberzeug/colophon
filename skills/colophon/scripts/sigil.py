@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build the Colophon sigil as a ready-to-paste link for Slack, Jira, GitHub and Trello.
+"""Build the Colophon sigil as a ready-to-paste link for Slack, Jira, GitHub, Trello and Gmail.
 
 Prints exactly one line to stdout. Warnings go to stderr so the output stays
 usable in a pipe.
@@ -9,6 +9,7 @@ usable in a pipe.
 
 import argparse
 import datetime
+import html
 import os
 import re
 import sys
@@ -18,7 +19,7 @@ DEFAULT_BASE = "https://zauberzeug.github.io/colophon/"
 
 SIGIL = "※"  # U+203B REFERENCE MARK
 
-PLATFORMS = ("slack", "jira", "github", "trello")
+PLATFORMS = ("slack", "jira", "github", "trello", "gmail")
 
 
 def base_url():
@@ -57,6 +58,10 @@ def format_link(platform, url, tooltip=None):
         return "<%s|%s>" % (url, SIGIL)
     if platform == "jira":
         return "[%s|%s]" % (SIGIL, url)
+    if platform == "gmail":
+        # Mail bodies are HTML, not Markdown: the ampersands separating the
+        # fragment parameters must be escaped or the href ends at the first one.
+        return '<a href="%s">%s</a>' % (html.escape(url, quote=True), SIGIL)
     if platform in ("github", "trello"):
         if platform == "github" and tooltip:
             return '[%s](%s "%s")' % (SIGIL, url, escape_markdown_title(tooltip))

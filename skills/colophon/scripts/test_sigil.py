@@ -2,6 +2,7 @@
 """Tests for sigil.py — run with: python3 test_sigil.py"""
 
 import contextlib
+import html
 import io
 import os
 import sys
@@ -100,6 +101,34 @@ class TestPlatforms(unittest.TestCase):
         out, _ = run(["--platform", "trello"] + self.ARGS)
         self.assertTrue(out.startswith("[※](https://"))
         self.assertTrue(out.endswith(")"))
+
+    def test_gmail_is_an_html_anchor(self):
+        out, _ = run(["--platform", "gmail"] + self.ARGS)
+        self.assertTrue(out.startswith('<a href="https://'))
+        self.assertTrue(out.endswith(">※</a>"))
+
+    def test_gmail_escapes_ampersands_in_the_href(self):
+        """A bare & in an attribute is invalid HTML and can truncate the URL."""
+        out, _ = run(["--platform", "gmail", "--model", "claude-opus-5",
+                      "--text", "Drafted by the model.", "--self-posted"])
+        href = out.split('"')[1]
+        self.assertIn("&amp;", href)
+        self.assertNotIn("&t=", href)
+        self.assertNotIn("&p=", href)
+
+    def test_gmail_href_decodes_to_the_canonical_url(self):
+        out, _ = run(["--platform", "gmail"] + self.ARGS)
+        href = html.unescape(out.split('"')[1])
+        self.assertEqual(
+            href, sigil.build_url("claude-opus-5", "Drafted by the model.")
+        )
+
+    def test_gmail_escapes_markup_from_the_free_text(self):
+        out, _ = run(["--platform", "gmail", "--model", "claude-opus-5",
+                      "--text", 'He said "<b>hi</b>" & left.'])
+        self.assertEqual(out.split('"')[2], ">※</a>")
+        href = html.unescape(out.split('"')[1])
+        self.assertEqual(params_of(href)["t"][0], 'He said "<b>hi</b>" & left.')
 
     def test_output_is_exactly_one_line(self):
         for platform in sigil.PLATFORMS:

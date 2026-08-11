@@ -1,6 +1,6 @@
 ---
 name: colophon
-description: Builds the Colophon sigil `※` — a link at the end of a line that declares AI co-authorship — for Jira, Slack, GitHub and Trello. Use it whenever a comment, ticket, PR description, issue or message for one of these platforms is written and the AI contributed substantially, even without an explicit request to mark it. Not for git commits (those use the Assisted-by trailer).
+description: Builds the Colophon sigil `※` — a link at the end of a line that declares AI co-authorship — for Jira, Slack, GitHub, Trello and Gmail. Use it whenever a comment, ticket, PR description, issue or message for one of these platforms is written and the AI contributed substantially, even without an explicit request to mark it. Not for git commits (those use the Assisted-by trailer).
 ---
 
 # Colophon
@@ -87,7 +87,7 @@ Do not build the encoding or the link dialects by hand — always call the scrip
 It prints exactly one line to stdout.
 
 ```bash
-python3 scripts/sigil.py --platform <slack|jira|github|trello> \
+python3 scripts/sigil.py --platform <slack|jira|github|trello|gmail> \
                          --model <id> \
                          --text "<free text>" \
                          [--date YYYY-MM-DD] [--agent <id>] [--tooltip] [--self-posted]
@@ -143,6 +143,25 @@ Plain Markdown, no tooltip.
 python3 scripts/sigil.py --platform trello --model claude-opus-5 \
   --text "Substance from the conversation, wording and structure from the model."
 ```
+
+### Gmail
+
+An HTML anchor for the message body. The ampersands between the fragment parameters are escaped as `&amp;`: a bare `&` in an attribute is invalid HTML and truncates the URL at the first parameter, which silently drops the free text — the very part the sigil exists for.
+
+```bash
+python3 scripts/sigil.py --platform gmail --model claude-opus-5 \
+  --text "Substance from the author, wording from the model."
+```
+
+```
+<a href="https://zauberzeug.github.io/colophon/#m=claude-opus-5&amp;t=Substance%20from%20the%20author%2C%20wording%20from%20the%20model.">※</a>
+```
+
+Put it on the signature line, after the sender's name and separated by a space. On a line of its own it reads as a footnote to the mail rather than a mark on the text.
+
+This needs an HTML body. Plain text cannot carry a link, and pasting the bare URL turns one quiet character into three lines of noise — in a plain-text mail leave the sigil off and say in the text that it was drafted with AI support.
+
+Mark mail that is **work product**: a status report to an external party, a specification, minutes, anything that will be read later without the surrounding conversation. A short personal reply stays unmarked, as everywhere else.
 
 ## Further options
 

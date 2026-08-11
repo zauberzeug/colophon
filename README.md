@@ -7,7 +7,7 @@ Clicking it explains which model was involved and what it contributed.
 A ±0.05 mm tolerance on the hole pattern is not enough … ※
 ```
 
-Works in **GitHub**, **Jira**, **Slack** and **Trello**.
+Works in **GitHub**, **Jira**, **Slack**, **Trello** and **Gmail**.
 One quiet character is easy to ignore, and one click away if you want the detail — no disclaimer line bloating the text.
 The system is a **self-declaration**, and it says so: not an audit log, not a cryptographic proof, not a detector for undeclared AI use.
 
@@ -107,10 +107,12 @@ One codepoint, no variation selectors, no modifiers.
 | **Jira** | `[※\|URL]` wiki markup | no |
 | **Slack** | `<URL\|※>` | no |
 | **Trello** | `[※](URL)` | don't rely on it |
+| **Gmail** | `<a href="URL">※</a>` | no |
 
 - **GitHub:** the tooltip is a bonus, not a mechanism — there is no hover on mobile, the click must work on its own.
 - **Jira:** wiki markup is converted by Cloud on paste; when building ADF directly, the URL becomes the `href` of a link mark on `※`.
 - **Slack:** when posting via API, set `unfurl_links: false`, or every message drags a preview card of this page behind it.
+- **Gmail:** the `&` between fragment parameters is escaped as `&amp;`, otherwise the href ends at the first parameter and the declared text is lost. Needs an HTML body — in plain text a link cannot be represented, and the bare URL is three lines of noise where the point was one quiet character. Put the sigil on the signature line, after the sender's name.
 
 ## Development
 
