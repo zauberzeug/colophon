@@ -102,7 +102,7 @@ class TestPlatforms(unittest.TestCase):
         self.assertTrue(out.endswith(")"))
 
     def test_output_is_exactly_one_line(self):
-        for platform in sigil.PLATFORMS:
+        for platform in sigil.TARGETS:
             with self.subTest(platform=platform):
                 out, _ = run(["--platform", platform] + self.ARGS)
                 self.assertEqual(len(out.splitlines()), 1)
@@ -243,6 +243,55 @@ class TestErrors(unittest.TestCase):
                 "--date", "10.08.2026",
             ]
         )
+
+
+class TestUrlTarget(unittest.TestCase):
+    """`--platform url` — the escape hatch for callers that build the link.
+
+    Jira comments written as ADF are the motivating case: there the link is a
+    mark on a text node, so the wiki wrapping `[※|URL]` has nothing to attach
+    to and would show up as literal characters. Same for HTML and any API
+    payload that carries href and label in separate fields.
+    """
+
+    ARGS = ["--model", "claude-opus-5", "--text", "Drafted by the model."]
+
+    def test_prints_the_bare_url(self):
+        out, _ = run(["--platform", "url"] + self.ARGS)
+        self.assertTrue(out.startswith("https://zauberzeug.github.io/colophon/#"))
+
+    def test_output_carries_no_link_syntax_and_no_sigil(self):
+        out, _ = run(["--platform", "url"] + self.ARGS)
+        for char in ("[", "]", "<", ">", "|", sigil.SIGIL):
+            self.assertNotIn(char, out)
+
+    def test_it_is_the_same_url_the_platforms_wrap(self):
+        bare, _ = run(["--platform", "url"] + self.ARGS)
+        for platform in sigil.PLATFORMS:
+            with self.subTest(platform=platform):
+                wrapped, _ = run(["--platform", platform] + self.ARGS)
+                self.assertIn(bare, wrapped)
+
+    def test_optional_parameters_still_apply(self):
+        out, _ = run(
+            ["--platform", "url", "--self-posted", "--date", "2026-08-10",
+             "--agent", "claude-code"] + self.ARGS
+        )
+        params = params_of(out)
+        self.assertEqual(params["p"], ["agent"])
+        self.assertEqual(params["d"], ["2026-08-10"])
+        self.assertEqual(params["a"], ["claude-code"])
+
+    def test_tooltip_warns_and_leaves_the_url_untouched(self):
+        out, err = run(["--platform", "url", "--tooltip"] + self.ARGS)
+        self.assertIn("--tooltip", err)
+        self.assertTrue(out.startswith("https://"))
+        self.assertNotIn('"', out)
+
+    def test_url_is_not_listed_as_a_platform(self):
+        """PLATFORMS stays the list of link dialects; TARGETS adds the escape hatch."""
+        self.assertNotIn("url", sigil.PLATFORMS)
+        self.assertIn("url", sigil.TARGETS)
 
 
 class TestBaseUrl(unittest.TestCase):

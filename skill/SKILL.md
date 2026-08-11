@@ -87,7 +87,7 @@ Do not build the encoding or the link dialects by hand — always call the scrip
 It prints exactly one line to stdout.
 
 ```bash
-python3 scripts/sigil.py --platform <slack|jira|github|trello> \
+python3 scripts/sigil.py --platform <slack|jira|github|trello|url> \
                          --model <id> \
                          --text "<free text>" \
                          [--date YYYY-MM-DD] [--agent <id>] [--tooltip] [--self-posted]
@@ -109,7 +109,7 @@ python3 scripts/sigil.py --platform slack --model claude-opus-5 \
 ### Jira
 
 Wiki markup works on Server/DC and is converted by Cloud on paste — when in doubt, use it.
-If you build ADF directly, the same URL string becomes the `href` of a link mark on the text `※`.
+If you build ADF directly, take `--platform url` and make that URL the `href` of a link mark on the text `※` — see "Building the link yourself" below.
 
 ```bash
 python3 scripts/sigil.py --platform jira --model claude-opus-5 \
@@ -143,6 +143,23 @@ Plain Markdown, no tooltip.
 python3 scripts/sigil.py --platform trello --model claude-opus-5 \
   --text "Substance from the conversation, wording and structure from the model."
 ```
+
+### Building the link yourself
+
+`--platform url` prints the bare URL and nothing else.
+Use it when the target keeps label and href in separate fields and cannot take a string with markup — Jira ADF, HTML, most API payloads.
+
+```bash
+python3 scripts/sigil.py --platform url --model claude-opus-5 \
+  --text "Wording from the model, substance from the author."
+```
+
+```json
+{"type": "text", "text": "※", "marks": [{"type": "link", "attrs": {"href": "<URL>"}}]}
+```
+
+The reader still sees only `※`; the URL sits in the attribute.
+Do not cut the URL out of another platform's output instead — that output is meant to be pasted verbatim.
 
 ## Further options
 
