@@ -1,0 +1,10 @@
+{
+  "name": "colophon",
+  "description": "Appends the sigil ※ to comments, tickets and messages the AI has substantially co-written, linking to a page that names the model, what it contributed, and whether a human posted it. Covers GitHub, Jira, Slack and Trello.",
+  "author": {
+    "name": "Zauberzeug",
+    "url": "https://github.com/zauberzeug"
+  },
+  "homepage": "https://zauberzeug.github.io/colophon/",
+  "repository": "https://github.com/zauberzeug/colophon"
+}

@@ -15,15 +15,28 @@ The name comes from the colophon, the note at the end of a book recording how it
 The character itself is a *sigil* — a short mark standing in for something longer.
 It certifies nothing, it declares.
 
+## Install
+
+In Claude Code, this repository is its own plugin marketplace:
+
+```
+/plugin marketplace add zauberzeug/colophon
+/plugin install colophon@colophon
+```
+
+Later updates come with `/plugin marketplace update colophon`.
+Without plugins, symlink the skill into your personal skills directory instead: `ln -s "$PWD/skills/colophon" ~/.claude/skills/colophon`.
+
 ## Use it
 
-Point your agent at the skill in [skill/](skill/SKILL.md).
-From then on it appends the sigil itself whenever it has substantially co-written a comment, ticket or message — no prompting needed, and it decides where the threshold lies.
+Nothing to invoke.
+The agent appends the sigil itself whenever it has substantially co-written a comment, ticket or message — no prompting needed, and it decides where the threshold lies.
+The rules it follows are in [skills/colophon/SKILL.md](skills/colophon/SKILL.md).
 
 To build a sigil by hand, call the script (Python 3, standard library only):
 
 ```bash
-$ python3 skill/scripts/sigil.py --platform slack --model claude-opus-5 \
+$ python3 skills/colophon/scripts/sigil.py --platform slack --model claude-opus-5 \
     --text "Drafted by the model from the author's bullet points."
 <https://zauberzeug.github.io/colophon/#m=claude-opus-5&t=Drafted%20by%20the%20model%20…|※>
 ```
@@ -107,7 +120,7 @@ Jira comments written as ADF, HTML and most API payloads carry the label and the
 For those, `--platform url` prints the bare URL and nothing else:
 
 ```bash
-$ python3 skill/scripts/sigil.py --platform url --model claude-opus-5 \
+$ python3 skills/colophon/scripts/sigil.py --platform url --model claude-opus-5 \
     --text "Wording from the model, substance from the author."
 https://zauberzeug.github.io/colophon/#m=claude-opus-5&t=Wording%20from%20the%20model…
 ```
@@ -124,10 +137,12 @@ That output is meant to be pasted verbatim; a change to its wrapping would break
 ## Development
 
 ```bash
-python3 skill/scripts/test_sigil.py        # tests, stdlib only
-python3 -m http.server 8000                # preview the page locally
-COLOPHON_BASE=http://localhost:8000/ python3 skill/scripts/sigil.py …
+python3 skills/colophon/scripts/test_sigil.py   # tests, stdlib only
+python3 -m http.server 8000                     # preview the page locally
+COLOPHON_BASE=http://localhost:8000/ python3 skills/colophon/scripts/sigil.py …
 ```
 
 GitHub Pages serves `index.html` from `main`, root — no build step.
 The page renders entirely client-side and falls back to its explanation view on missing or broken parameters.
+
+The repository doubles as its own plugin marketplace: `.claude-plugin/marketplace.json` lists this repo (`source: "./"`) as the single plugin, and a plugin loads its skills from `skills/`.
