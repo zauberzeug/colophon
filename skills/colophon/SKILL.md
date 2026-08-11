@@ -1,6 +1,6 @@
 ---
 name: colophon
-description: Builds the Colophon sigil `※` — a link at the end of a line that declares AI co-authorship — for Jira, Slack, GitHub, Trello and Gmail. Use it whenever a comment, ticket, PR description, issue or message for one of these platforms is written and the AI contributed substantially, even without an explicit request to mark it. Not for git commits (those use the Assisted-by trailer).
+description: Builds the Colophon sigil `※` — a link at the end of a line that declares AI co-authorship — for Jira, Slack, GitHub and Trello, plus an HTML anchor for mail and wiki pages and a bare URL for callers that build the link themselves. Use it whenever a comment, ticket, PR description, issue, e-mail or message is written and the AI contributed substantially, even without an explicit request to mark it. Not for git commits (those use the Assisted-by trailer).
 ---
 
 # Colophon
@@ -85,11 +85,14 @@ A wrong model name is worse than an imprecise one.
 
 Do not build the encoding or the link dialects by hand — always call the script.
 It prints exactly one line to stdout.
-For the four platform dialects that line is the finished sigil: paste it verbatim.
-`--platform url` is the exception — it prints a bare URL that you put into the target's href field yourself, see "Building the link yourself" below.
+
+For the four platforms that line is the finished sigil: paste it verbatim.
+The two remaining targets are not platforms and are not pasted into a text box:
+`html` emits markup for a body that stores markup, and `url` prints a bare URL for callers that build the link themselves.
+Pick by what the target stores, not by what it is called — see the two sections below.
 
 ```bash
-python3 scripts/sigil.py --platform <slack|jira|github|trello|gmail|url> \
+python3 scripts/sigil.py --platform <slack|jira|github|trello|html|url> \
                          --model <id> \
                          --text "<free text>" \
                          [--date YYYY-MM-DD] [--agent <id>] [--tooltip] [--self-posted]
@@ -146,12 +149,13 @@ python3 scripts/sigil.py --platform trello --model claude-opus-5 \
   --text "Substance from the conversation, wording and structure from the model."
 ```
 
-### Gmail
+### HTML
 
-An HTML anchor for the message body. The ampersands between the fragment parameters are escaped as `&amp;`: a bare `&` in an attribute is invalid HTML and truncates the URL at the first parameter, which silently drops the free text — the very part the sigil exists for.
+An anchor for anything whose body is markup: an HTML mail, a Confluence page, a rendered template.
+`--tooltip` adds a `title` attribute, same bonus as on GitHub.
 
 ```bash
-python3 scripts/sigil.py --platform gmail --model claude-opus-5 \
+python3 scripts/sigil.py --platform html --model claude-opus-5 \
   --text "Substance from the author, wording from the model."
 ```
 
@@ -159,16 +163,30 @@ python3 scripts/sigil.py --platform gmail --model claude-opus-5 \
 <a href="https://zauberzeug.github.io/colophon/#m=claude-opus-5&amp;t=Substance%20from%20the%20author%2C%20wording%20from%20the%20model.">※</a>
 ```
 
-Put it on the signature line, after the sender's name and separated by a space. On a line of its own it reads as a footnote to the mail rather than a mark on the text.
+**This output is source, not text.**
+It belongs where markup is what gets stored — the HTML body of a mail sent via API, a Confluence storage-format page, a template.
+In a visual editor that treats what you type as literal text — the Gmail compose window, a rich-text comment box — pasting it shows the angle brackets to the reader instead of a link.
+There, use the editor's own insert-link command with `※` as the text and `--platform url` for the address.
 
-This needs an HTML body. Plain text cannot carry a link, and pasting the bare URL turns one quiet character into three lines of noise — in a plain-text mail leave the sigil off and say in the text that it was drafted with AI support.
+The `&` between the fragment parameters comes out as `&amp;`.
+This is what makes the anchor safe in the strict case: read as XML — Confluence storage format, XHTML — a bare `&` is a parse error that rejects the whole document, and an HTML parser may read one as the start of a character reference.
+Escaped, every parser hands the original URL back.
 
-Mark mail that is **work product**: a status report to an external party, a specification, minutes, anything that will be read later without the surrounding conversation. A short personal reply stays unmarked, as everywhere else.
+#### In mail
+
+Put the sigil on the signature line, after the sender's name and separated by a space.
+On a line of its own it reads as a footnote to the mail rather than a mark on the text.
+
+A plain-text mail cannot carry a link at all, and the bare URL turns one quiet character into three lines of noise.
+Leave the sigil off there and say in the text that it was drafted with AI support.
+
+Mark mail that is **work product**: a status report to an external party, a specification, minutes, anything that will be read later without the surrounding conversation.
+A short personal reply stays unmarked, as everywhere else.
 
 ### Building the link yourself
 
 `--platform url` prints the bare URL and nothing else.
-Use it when the target keeps label and href in separate fields and cannot take a string with markup — Jira ADF, HTML, most API payloads.
+Use it when the target keeps label and href in separate fields — Jira ADF, most API payloads, the insert-link dialog of a visual editor.
 
 ```bash
 python3 scripts/sigil.py --platform url --model claude-opus-5 \
@@ -180,16 +198,17 @@ python3 scripts/sigil.py --platform url --model claude-opus-5 \
 ```
 
 The reader still sees only `※`; the URL sits in the attribute.
+The label is always `※`, wherever the target keeps its link text.
 
-The URL separates its parameters with raw `&`.
-JSON payloads like the ADF above take it as it is, but in XML-parsed markup — XHTML, Confluence storage format — an unescaped `&` breaks the whole document: write `&amp;` there.
-Do not cut the URL out of another platform's output instead — that output is meant to be pasted verbatim.
+The URL separates its parameters with raw `&`, which is right for a JSON payload like the ADF above and for a dialog that takes the address as a string.
+If you are writing the URL into markup yourself, do not escape it by hand — take `--platform html`, which emits the whole anchor correctly escaped.
+Do not cut the URL out of another platform's output either; that output is meant to be pasted verbatim.
 
 ## Further options
 
 - `--date 2026-08-10` — ISO date, optional.
 - `--agent claude-code` — agent or tool, if the text was not written directly in a chat.
-- `--tooltip` only applies to `--platform github`; elsewhere it warns on stderr and the link stays correct.
+- `--tooltip` applies to `--platform github` and `--platform html` — the two dialects with a native hover title; elsewhere it warns on stderr and the link stays correct.
 - Env `COLOPHON_BASE` overrides the base URL (for local testing, say).
 
 ## Tests
