@@ -33,7 +33,7 @@ Not per paragraph — that would be noise.
 
 One or two sentences, concrete, in the language of the contribution it is attached to — English if in doubt.
 It answers exactly one question: **what did the AI contribute, and what did the human?**
-The model is already in `--model`, and who stands behind the text follows from who posted it.
+The model is already in `--model`, and who stands behind the text follows from who approved it.
 
 The most valuable part of the sentence is the one that names the **division of labour**.
 "Substance from the human, form from the model" and "all of it from the model" are entirely different contributions, and that is precisely what you cannot see in the finished text.
@@ -62,18 +62,22 @@ No flattering, but no downplaying either.
 
 ### No claims about review
 
-The agent does not know whether a human has read the text — it writes the colophon before anyone could have read it.
+The agent does not know whether a human has checked the text for correctness — the colophon is written into the draft, so whatever anyone reads already carries the claim.
 Sentences like "reviewed by the author" or "unreviewed" therefore do **not** belong in the free text, neither affirming nor denying.
-Who carries responsibility follows from who posted, and the page states it on its own.
+Approval to publish is a different fact and has its own place — the `--unapproved` flag below; it stays out of the free text too.
 
-## `--self-posted` only when publishing itself
+## `--unapproved` when nobody gave the go
 
-- The agent publishes the contribution **itself** in the same move (via API, from a workflow) → set the flag.
-- The agent hands the text to a human to paste → leave it off.
+The flag states: no human approved this text before it went out.
 
-Leaving it off is the safe variant: a missing `p` claims nothing false.
-This distinction is the only reliable statement about human backing in the whole system — it must not be guessed.
-The agent always knows it without asking: it knows whether it posted itself.
+- A human read the text (or its draft) and gave an explicit go for it → leave the flag off, even when the agent then posts it via API.
+- The text goes out without anyone having read it — standing authorization ("post whatever you find"), a cron job, an autonomous workflow → set the flag.
+- In doubt → set the flag: leaving it off is the claim that needs the evidence.
+
+The go must cover the text as posted; if the text changes after the approval beyond typos and formatting, the approval is spent and the flag comes back.
+This is a fact about the conversation, not a judgement about the text: either someone said yes to what is going out, or nobody did — and where that is not clear, the last rule settles it.
+
+The former name `--self-posted` still works, but it names the wrong rule: who pressed send does not decide the flag, the missing go does.
 
 ## Model identifier
 
@@ -95,7 +99,7 @@ Pick by what the target stores, not by what it is called — see the two section
 python3 scripts/sigil.py --platform <slack|jira|github|trello|html|url> \
                          --model <id> \
                          --text "<free text>" \
-                         [--date YYYY-MM-DD] [--agent <id>] [--tooltip] [--self-posted]
+                         [--date YYYY-MM-DD] [--agent <id>] [--tooltip] [--unapproved]
 ```
 
 ### Slack
@@ -118,7 +122,7 @@ If you build ADF directly, take `--platform url` and make that URL the `href` of
 
 ```bash
 python3 scripts/sigil.py --platform jira --model claude-opus-5 \
-  --text "Assembled by the agent on its own from the ticket history." --self-posted
+  --text "Assembled by the agent on its own from the ticket history." --unapproved
 ```
 
 ```

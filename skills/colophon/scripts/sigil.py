@@ -47,10 +47,10 @@ def normalize(text):
     return re.sub(r"\s+", " ", text).strip()
 
 
-def build_url(model, text, self_posted=False, date=None, agent=None, base=None):
+def build_url(model, text, unapproved=False, date=None, agent=None, base=None):
     """Assemble the Colophon URL: everything in the fragment, everything encoded."""
     params = [("m", model), ("t", text)]
-    if self_posted:
+    if unapproved:
         params.append(("p", "agent"))
     if date:
         params.append(("d", date))
@@ -125,9 +125,14 @@ def parse_args(argv=None):
         help="append a hover title; only effective with --platform github or html",
     )
     parser.add_argument(
+        # `--self-posted` was the original name, from when the flag asked who
+        # made the API call. It now asks whether anyone gave the go, and those
+        # two answers differ in the common case — an agent posting an approved
+        # text. Kept as an alias so existing callers keep working.
+        "--unapproved",
         "--self-posted",
         action="store_true",
-        help="set p=agent — only when the agent publishes the contribution itself",
+        help="set p=agent — only when no human approved the text before it went out",
     )
 
     args = parser.parse_args(argv)
@@ -169,7 +174,7 @@ def main(argv=None):
     url = build_url(
         args.model,
         args.text,
-        self_posted=args.self_posted,
+        unapproved=args.unapproved,
         date=args.date,
         agent=args.agent,
     )
