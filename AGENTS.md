@@ -24,7 +24,7 @@ COLOPHON_BASE=http://localhost:8000/ python3 skills/colophon/scripts/sigil.py --
 
 Three components share no code.
 Their shared contract is the **URL fragment schema** — a change to it touches all three.
-`SKILL.md` additionally pins `sigil.py`'s CLI flags and expected outputs verbatim, so interface changes to the script touch the skill as well.
+`SKILL.md` additionally pins `sigil.py`'s CLI flags and output shape (some examples elide the URL with `…`), so interface changes to the script touch the skill as well.
 
 1. **`skills/colophon/SKILL.md`** — the policy layer.
    Tells the agent *when* to mark, how to write the free text (division of labour, honesty rule, no review claims), and when `--self-posted` is allowed.
@@ -47,7 +47,7 @@ This is a deliberate privacy decision; do not rebuild it on `?`.
 
 ### Platforms vs. targets in sigil.py
 
-`PLATFORMS` (slack, jira, github, trello) are destinations; `TARGETS` adds two generic dialects: `html` (an XML-safe anchor with `&amp;`-escaped href, for markup bodies) and `url` (the bare URL, for callers that keep href and label in separate fields, e.g. Jira ADF).
+`PLATFORMS` (slack, jira, github, trello) are destinations; `TARGETS` adds two generic targets: the `html` dialect (an XML-safe anchor with `&amp;`-escaped href, for markup bodies) and `url` (no link dialect at all — the bare URL, for callers that keep href and label in separate fields, e.g. Jira ADF).
 `TOOLTIP_TARGETS` (github, html) are the two dialects with a native hover title.
 **Tests derive their coverage from these tuples** — a new target added there is automatically exercised by the loop-based tests.
 Keep that property when extending.
