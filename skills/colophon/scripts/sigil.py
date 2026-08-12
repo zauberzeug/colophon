@@ -127,7 +127,7 @@ def parse_args(argv=None):
     parser.add_argument(
         "--self-posted",
         action="store_true",
-        help="set p=agent — only when the agent publishes the contribution itself",
+        help="set p=agent — only when no human approved the text before it went out",
     )
 
     args = parser.parse_args(argv)
