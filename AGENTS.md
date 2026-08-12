@@ -27,7 +27,7 @@ Their shared contract is the **URL fragment schema** — a change to it touches 
 `SKILL.md` additionally pins `sigil.py`'s CLI flags and output shape (some examples elide the URL with `…`), so interface changes to the script touch the skill as well.
 
 1. **`skills/colophon/SKILL.md`** — the policy layer.
-   Tells the agent *when* to mark, how to write the free text (division of labour, honesty rule, no review claims), and when `--self-posted` may stay off.
+   Tells the agent *when* to mark, how to write the free text (division of labour, honesty rule, no review claims), and when `--unapproved` may stay off.
    The frontmatter `description` is what triggers the skill automatically.
 2. **`skills/colophon/scripts/sigil.py`** — the mechanism.
    Encodes the parameters into the fragment and wraps the URL in one platform's link dialect.
@@ -71,7 +71,7 @@ Work as a pair programmer, not a silent code generator:
 ## Conventions
 
 - The sigil is exactly one codepoint, U+203B, no variation selectors (asserted by a test).
-- The `p=agent` semantics — no human approved this exact text before it went out; a bright-line fact about the conversation, set when in doubt — is load-bearing; don't loosen it in `SKILL.md` or `index.html`.
+- The `p=agent` semantics — no human approved this exact text before it went out; a fact about the conversation, set when in doubt — is load-bearing; don't loosen it in `SKILL.md` or `index.html`.
 - Write prose one sentence per line (semantic line breaks); match the existing voice — declarative, concrete, no filler.
 
 ## Before Claiming a Task Complete

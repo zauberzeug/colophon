@@ -58,11 +58,11 @@ The declared text is one or two sentences naming the **division of labour** — 
 
 Approval is the endorsement.
 Whoever releases a text — by hitting "send", or by reading an agent's draft and giving the explicit go — answers for the content, exactly as with text they typed themselves; nobody signs their own e-mail with "I have read this".
-So the page states it as a constant: *whoever published this contribution answers for it.*
+So the page states it as a constant: *whoever approved this contribution answers for it.*
 
-The one exception is marked explicitly: if no human saw the exact text before it went out — an agent posting on standing authorization, from a cron job, an autonomous workflow — the page says so loudly.
-The flag stays a bright line, not a judgement: an explicit go for this text means no flag, anything less means the flag, and in doubt the flag — leaving it off is the claim that needs the evidence.
-Approval releases a text, it does not vouch for it: claims about review ("checked by the author") still never belong in the declared text, because the agent writes the colophon before anyone could have read it.
+The one exception is marked explicitly: if no human approved the exact text before it went out — an agent posting on standing authorization, from a cron job, an autonomous workflow — the page says so loudly.
+The flag is a fact about the conversation, not a judgement about the text: an explicit go for this text means no flag, anything less means the flag, and in doubt the flag — leaving it off is the claim that needs the evidence.
+Approval releases a text, it does not vouch for it: claims about review ("checked by the author") still never belong in the declared text, because the colophon is written into the draft — whatever anyone reads already carries the claim.
 
 ## How it works
 

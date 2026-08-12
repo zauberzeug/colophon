@@ -111,7 +111,7 @@ class TestPlatforms(unittest.TestCase):
     def test_html_escapes_ampersands_in_the_href(self):
         """Bare, the & is a parse error in XML and a character reference in HTML."""
         out, _ = run(["--platform", "html", "--model", "claude-opus-5",
-                      "--text", "Drafted by the model.", "--self-posted"])
+                      "--text", "Drafted by the model.", "--unapproved"])
         href = out.split('"')[1]
         self.assertIn("&amp;", href)
         self.assertNotIn("&t=", href)
@@ -119,7 +119,7 @@ class TestPlatforms(unittest.TestCase):
 
     def test_html_anchor_parses_as_xml(self):
         """Confluence storage format and XHTML reject a document with a bare &."""
-        out, _ = run(["--platform", "html", "--self-posted", "--date", "2026-08-10"]
+        out, _ = run(["--platform", "html", "--unapproved", "--date", "2026-08-10"]
                      + self.ARGS)
         node = ElementTree.fromstring(out)
         self.assertEqual(node.tag, "a")
@@ -127,7 +127,7 @@ class TestPlatforms(unittest.TestCase):
         self.assertEqual(
             node.attrib["href"],
             sigil.build_url("claude-opus-5", "Drafted by the model.",
-                            self_posted=True, date="2026-08-10"),
+                            unapproved=True, date="2026-08-10"),
         )
 
     def test_html_href_decodes_to_the_canonical_url(self):
@@ -237,14 +237,14 @@ class TestTooltip(unittest.TestCase):
         self.assertTrue(out.endswith('."')  or out.endswith('")'))
 
 
-class TestSelfPosted(unittest.TestCase):
+class TestUnapproved(unittest.TestCase):
     def test_without_flag_there_is_no_p_parameter(self):
         url = sigil.build_url("claude-opus-5", "Drafted by the model.")
         self.assertNotIn("p=", url)
         self.assertNotIn("p", params_of(url))
 
     def test_with_flag_p_is_agent(self):
-        url = sigil.build_url("claude-opus-5", "Drafted by the model.", self_posted=True)
+        url = sigil.build_url("claude-opus-5", "Drafted by the model.", unapproved=True)
         self.assertEqual(params_of(url)["p"], ["agent"])
 
     def test_cli_flag(self):
@@ -253,10 +253,22 @@ class TestSelfPosted(unittest.TestCase):
                 "--platform", "slack",
                 "--model", "claude-opus-5",
                 "--text", "Assembled by the agent from the ticket history.",
-                "--self-posted",
+                "--unapproved",
             ]
         )
         self.assertIn("&p=agent", out)
+
+    def test_former_name_is_still_accepted(self):
+        """`--self-posted` predates the redefinition; callers still pass it."""
+        args = [
+            "--platform", "slack",
+            "--model", "claude-opus-5",
+            "--text", "Assembled by the agent from the ticket history.",
+        ]
+        old, _ = run(args + ["--self-posted"])
+        new, _ = run(args + ["--unapproved"])
+        self.assertEqual(old, new)
+        self.assertIn("&p=agent", old)
 
 
 class TestOptionalParameters(unittest.TestCase):
@@ -276,7 +288,7 @@ class TestOptionalParameters(unittest.TestCase):
         url = sigil.build_url(
             "claude-opus-5",
             "Drafted by the model.",
-            self_posted=True,
+            unapproved=True,
             date="2026-08-10",
             agent="claude-code",
         )
@@ -351,7 +363,7 @@ class TestUrlTarget(unittest.TestCase):
 
     def test_optional_parameters_still_apply(self):
         out, _ = run(
-            ["--platform", "url", "--self-posted", "--date", "2026-08-10",
+            ["--platform", "url", "--unapproved", "--date", "2026-08-10",
              "--agent", "claude-code"] + self.ARGS
         )
         params = params_of(out)
