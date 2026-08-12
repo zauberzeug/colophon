@@ -118,7 +118,8 @@ One codepoint, no variation selectors, no modifiers.
 
 ## The two generic targets
 
-Only four of the six values name a platform. The other two name a syntax, because that is the only thing that distinguishes them — the same anchor serves an HTML mail, a Confluence page and a rendered template, and calling it `gmail` would have hidden the other two.
+Only four of the six values name a platform.
+The other two name a syntax, because that is the only thing that distinguishes them — the same anchor serves an HTML mail, a Confluence page and a rendered template, and calling it `gmail` would have hidden the other two.
 
 ### `html` — anywhere the body is markup
 
@@ -128,15 +129,22 @@ $ python3 skills/colophon/scripts/sigil.py --platform html --model claude-opus-5
 <a href="https://zauberzeug.github.io/colophon/#m=claude-opus-5&amp;t=Substance%20from%20the%20author…">※</a>
 ```
 
-The `&` between the fragment parameters comes out as `&amp;`. That is what makes the anchor safe in the strict case: read as XML — Confluence storage format, XHTML — a bare `&` is a parse error that rejects the whole document, and an HTML parser may take one for the start of a character reference. Escaped, every parser hands the original URL back.
+The `&` between the fragment parameters comes out as `&amp;`.
+That is what makes the anchor safe in the strict case: read as XML — Confluence storage format, XHTML — a bare `&` is a parse error that rejects the whole document, and an HTML parser may take one for the start of a character reference.
+Escaped, every parser hands the original URL back.
 
-This output is **source, not text**: it belongs where markup is what gets stored — the HTML body of a mail sent via API, a storage-format page, a template. Pasting it into a visual editor that treats typing as literal text, such as the Gmail compose window, shows the reader the angle brackets instead of a link; there, use the editor's insert-link command with `※` as the text and `--platform url` for the address.
+This output is **source, not text**: it belongs where markup is what gets stored — the HTML body of a mail sent via API, a storage-format page, a template.
+Pasting it into a visual editor that treats typing as literal text, such as the Gmail compose window, shows the reader the angle brackets instead of a link; there, use the editor's insert-link command with `※` as the text and `--platform url` for the address.
 
-In **mail**, put the sigil on the signature line, after the sender's name. A plain-text mail cannot carry a link at all — leave the sigil off and say in the text that it was drafted with AI support. Mark mail that is work product: a status report, a specification, minutes. A short personal reply stays unmarked, as everywhere else.
+In **mail**, put the sigil on the signature line, after the sender's name.
+A plain-text mail cannot carry a link at all — leave the sigil off and say in the text that it was drafted with AI support.
+Mark mail that is work product: a status report, a specification, minutes.
+A short personal reply stays unmarked, as everywhere else.
 
 ### `url` — when you build the link yourself
 
-Jira comments written as ADF and most API payloads carry the label and the href in separate fields, so wiki or Markdown wrapping has nothing to attach to and would end up as literal characters in the text. For those, `--platform url` prints the bare URL and nothing else:
+Jira comments written as ADF and most API payloads carry the label and the href in separate fields, so wiki or Markdown wrapping has nothing to attach to and would end up as literal characters in the text.
+For those, `--platform url` prints the bare URL and nothing else:
 
 ```bash
 $ python3 skills/colophon/scripts/sigil.py --platform url --model claude-opus-5 \
@@ -144,15 +152,18 @@ $ python3 skills/colophon/scripts/sigil.py --platform url --model claude-opus-5 
 https://zauberzeug.github.io/colophon/#m=claude-opus-5&t=Wording%20from%20the%20model…
 ```
 
-The label stays `※` — it just moves to wherever the target keeps its link text. In ADF:
+The label stays `※` — it just moves to wherever the target keeps its link text.
+In ADF:
 
 ```json
 {"type": "text", "text": "※", "marks": [{"type": "link", "attrs": {"href": "<URL>"}}]}
 ```
 
-The raw `&` is right for a JSON payload and for a dialog that takes the address as a string. If you are writing the URL into markup instead, don't escape it by hand — take `--platform html`, which emits the whole anchor already escaped.
+The raw `&` is right for a JSON payload and for a dialog that takes the address as a string.
+If you are writing the URL into markup instead, don't escape it by hand — take `--platform html`, which emits the whole anchor already escaped.
 
-Build the sigil one of these two ways rather than cutting the URL back out of another platform's output. That output is meant to be pasted verbatim; a change to its wrapping would break the cut silently.
+Build the sigil one of these two ways rather than cutting the URL back out of another platform's output.
+That output is meant to be pasted verbatim; a change to its wrapping would break the cut silently.
 
 ## Development
 
