@@ -44,6 +44,16 @@ $ python3 skills/colophon/scripts/sigil.py --platform slack --model claude-opus-
 The output is one line in the link syntax of the chosen platform, ready to paste.
 One sigil per contribution, at the end of the text, after the final punctuation, separated by a space.
 
+Better still, let the script do the attaching: `--body-file` reads the message from a file (`-` for stdin) and prints it back with the mark already in place —
+
+```bash
+$ echo "Ordered the parts." | python3 skills/colophon/scripts/sigil.py \
+    --platform github --model claude-opus-5 --text "Drafted by the model." --body-file -
+Ordered the parts. [※](https://zauberzeug.github.io/colophon/#m=claude-opus-5&t=Drafted%20by%20the%20model.)
+```
+
+— so the character never passes through anyone's hands on the way into a message.
+
 In **git commits** the convention remains the `Assisted-by: Claude:claude-opus-5` trailer rather than the sigil — different readers, different places.
 
 ## When to mark
@@ -101,7 +111,7 @@ One codepoint, no variation selectors, no modifiers.
 
 ## Platform notes
 
-`--platform` takes four platforms, named after where the text goes, plus two generic targets named after what they emit:
+`--platform` takes four platforms, named after where the text goes, plus three generic targets named after what they emit:
 
 | | Link syntax | Hover tooltip |
 |---|---|---|
@@ -110,16 +120,17 @@ One codepoint, no variation selectors, no modifiers.
 | **Slack** | `<URL\|※>` | no |
 | **Trello** | `[※](URL)` | don't rely on it |
 | `html` | `<a href="URL" title="…">※</a>` | yes — the `title` attribute, add `--tooltip` |
+| `json` | `{"label": "※", "href": URL}` — the fields, no link | — |
 | `url` | the bare URL, no link | — |
 
 - **GitHub:** the tooltip is a bonus, not a mechanism — there is no hover on mobile, the click must work on its own.
-- **Jira:** wiki markup is converted by Cloud on paste; when building ADF directly, ask for `--platform url` and make that URL the `href` of a link mark on `※`.
+- **Jira:** wiki markup is converted by Cloud on paste; when building ADF directly, ask for `--platform json` and copy both fields into the link mark on the text node.
 - **Slack:** when posting via API, set `unfurl_links: false`, or every message drags a preview card of this page behind it.
 
-## The two generic targets
+## The three generic targets
 
-Only four of the six values name a platform.
-The other two name a syntax, because that is the only thing that distinguishes them — the same anchor serves an HTML mail, a Confluence page and a rendered template, and calling it `gmail` would have hidden the other two.
+Only four of the seven values name a platform.
+The other three name what they emit, because that is the only thing that distinguishes them — the same anchor serves an HTML mail, a Confluence page and a rendered template, and calling it `gmail` would have hidden the other two.
 
 ### `html` — anywhere the body is markup
 
@@ -134,35 +145,36 @@ That is what makes the anchor safe in the strict case: read as XML — Confluenc
 Escaped, every parser hands the original URL back.
 
 This output is **source, not text**: it belongs where markup is what gets stored — the HTML body of a mail sent via API, a storage-format page, a template.
-Pasting it into a visual editor that treats typing as literal text, such as the Gmail compose window, shows the reader the angle brackets instead of a link; there, use the editor's insert-link command with `※` as the text and `--platform url` for the address.
+Pasting it into a visual editor that treats typing as literal text, such as the Gmail compose window, shows the reader the angle brackets instead of a link; there, use the editor's insert-link command, copying text and address from `--platform json`.
 
 In **mail**, put the sigil on the signature line, after the sender's name.
 A plain-text mail cannot carry a link at all — leave the sigil off and say in the text that it was drafted with AI support.
 Mark mail that is work product: a status report, a specification, minutes.
 A short personal reply stays unmarked, as everywhere else.
 
-### `url` — when you build the link yourself
+### `json` — when you build the link yourself
 
 Jira comments written as ADF and most API payloads carry the label and the href in separate fields, so wiki or Markdown wrapping has nothing to attach to and would end up as literal characters in the text.
-For those, `--platform url` prints the bare URL and nothing else:
+For those, `--platform json` prints the two fields every link is made of:
 
 ```bash
-$ python3 skills/colophon/scripts/sigil.py --platform url --model claude-opus-5 \
+$ python3 skills/colophon/scripts/sigil.py --platform json --model claude-opus-5 \
     --text "Wording from the model, substance from the author."
-https://zauberzeug.github.io/colophon/#m=claude-opus-5&t=Wording%20from%20the%20model…
+{"label": "※", "href": "https://zauberzeug.github.io/colophon/#m=claude-opus-5&t=Wording%20from%20the%20model…"}
 ```
 
-The label stays `※` — it just moves to wherever the target keeps its link text.
-In ADF:
+Copy both values — the label field exists so the character never has to come from memory.
+In ADF they land here:
 
 ```json
 {"type": "text", "text": "※", "marks": [{"type": "link", "attrs": {"href": "<URL>"}}]}
 ```
 
-The raw `&` is right for a JSON payload and for a dialog that takes the address as a string.
+`--platform url` prints the href alone, for a caller that already carries the label.
+Either way the raw `&` is right for a JSON payload and for a dialog that takes the address as a string.
 If you are writing the URL into markup instead, don't escape it by hand — take `--platform html`, which emits the whole anchor already escaped.
 
-Build the sigil one of these two ways rather than cutting the URL back out of another platform's output.
+Build the sigil one of these ways rather than cutting the URL back out of another platform's output.
 That output is meant to be pasted verbatim; a change to its wrapping would break the cut silently.
 
 ## Guarding against a broken colophon
@@ -172,8 +184,8 @@ A sigil can be written **without its link** — then it says nothing at all, bec
 Or the link can be built correctly and the **label** damaged in transit: the URL half is percent-encoded throughout, and an agent copying the line into a posting script wrote `%E2%80%BB` — the encoded form of the character — where the literal one belongs.
 The link still worked; the reader saw eight literal characters.
 
-Nothing in `sigil.py` can prevent either: the damage happens after it has printed the right answer.
-The check therefore belongs at the write path — call `is_broken_mark` from `skills/colophon/scripts/check.py` (stdlib only, one function) wherever your outgoing text is assembled, or use it as a command:
+Both failures happened while a hand carried the mark from the script's output into a message, so the first guard is to remove the hand-off: `--body-file` lets `sigil.py` attach the mark to the message itself, and `--platform json` hands link builders both fields so neither comes from memory.
+For whatever still assembles text by hand, the check belongs at the write path — call `is_broken_mark` from `skills/colophon/scripts/check.py` (stdlib only, one function) wherever your outgoing text is assembled, or use it as a command:
 
 ```bash
 python3 skills/colophon/scripts/check.py "Ordered the parts. ※"   # exit 1 + reason on stderr

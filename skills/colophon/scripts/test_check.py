@@ -47,13 +47,13 @@ class TheTwoIncidents(unittest.TestCase):
         self.assertTrue(check.is_broken_mark("Ordered the parts. ※  \n"))
 
     def test_an_encoded_label_is_broken_in_every_dialect(self):
-        # sigil.py's output carries the sigil exactly once, as the label; the
-        # incident wrote its percent-encoding there instead.
-        for target in sigil.TARGETS:
-            link = sigil.format_link(target, LEGEND)
-            if check.SIGIL not in link:  # `url` emits no label to damage
-                continue
+        # A mark dialect's output carries the sigil exactly once, as the
+        # label; the incident wrote its percent-encoding there instead.
+        # `json` and `url` are not in MARK_TARGETS: they hand over pieces, and
+        # damage to a piece is caught where the pieces are assembled, not here.
+        for target in sigil.MARK_TARGETS:
             with self.subTest(target=target):
+                link = sigil.format_link(target, LEGEND)
                 damaged = link.replace(check.SIGIL, "%E2%80%BB")
                 self.assertTrue(check.is_broken_mark("Done. " + damaged))
 

@@ -1,20 +1,29 @@
 #!/usr/bin/env python3
 """Build the Colophon sigil as a ready-to-paste link for Slack, Jira, GitHub and Trello.
 
-Prints exactly one line to stdout. Warnings go to stderr so the output stays
-usable in a pipe.
+Prints exactly one line to stdout — or, with `--body-file`, the whole message
+with the mark attached. Warnings go to stderr so the output stays usable in a
+pipe.
 
     sigil.py --platform slack --model claude-opus-5 --text "Drafted by the model."
+    echo "Ordered the parts." | sigil.py --platform slack --model claude-opus-5 \
+        --text "Drafted by the model." --body-file -
 
-Two targets are not platforms: `--platform html` emits an anchor for anything
-whose body is markup (an HTML mail, a Confluence page), and `--platform url`
-prints the bare URL for callers that build the link themselves (Jira ADF, an
-API payload that keeps href and label apart).
+Both observed colophon failures happened while a hand carried the mark from
+this script's output into a message. `--body-file` removes the hand-off for
+the four platforms: the message goes in, the message with the mark comes out.
+
+Three targets are not platforms: `--platform html` emits an anchor for
+anything whose body is markup (an HTML mail, a Confluence page), `--platform
+json` prints label and href as separate fields for callers that build the
+link themselves (Jira ADF, an API payload that keeps href and label apart),
+and `--platform url` prints the bare URL alone.
 """
 
 import argparse
 import datetime
 import html
+import json
 import os
 import re
 import sys
@@ -26,12 +35,18 @@ SIGIL = "※"  # U+203B REFERENCE MARK
 
 PLATFORMS = ("slack", "jira", "github", "trello")
 
-# Neither of these is a platform, so both stay out of PLATFORMS and that
-# remains the list of destinations whose dialect you cannot guess from the
-# name. `html` is a dialect named after its syntax — an HTML mail body is the
-# common case, but so is a Confluence page. `url` emits no link at all, for
-# callers that build one themselves and only need the href.
-TARGETS = PLATFORMS + ("html", "url")
+# None of these is a platform, so they stay out of PLATFORMS and that remains
+# the list of destinations whose dialect you cannot guess from the name.
+# `html` is a dialect named after its syntax — an HTML mail body is the common
+# case, but so is a Confluence page. `json` emits the two fields every link is
+# made of, for callers that build one themselves — the label rides along so
+# the character never has to come from memory. `url` emits the href alone.
+TARGETS = PLATFORMS + ("html", "json", "url")
+
+# Dialects whose output is the finished mark, label included — what gets
+# pasted (or attached) at the end of a message. `json` and `url` hand over
+# pieces instead, so damage to them is not a mark damaged in a message tail.
+MARK_TARGETS = PLATFORMS + ("html",)
 
 # Dialects whose syntax carries a native hover title.
 TOOLTIP_TARGETS = ("github", "html")
@@ -71,6 +86,10 @@ def format_link(platform, url, tooltip=None):
     """Wrap the URL in the link syntax of the target platform."""
     if platform == "url":
         return url
+    if platform == "json":
+        # ensure_ascii=False keeps the literal character on screen: this line
+        # is the copy source for both fields, label included.
+        return json.dumps({"label": SIGIL, "href": url}, ensure_ascii=False)
     if platform == "slack":
         return "<%s|%s>" % (url, SIGIL)
     if platform == "jira":
@@ -109,7 +128,8 @@ def parse_args(argv=None):
         required=True,
         choices=TARGETS,
         help="link dialect to emit; `html` emits an anchor for markup bodies, "
-        "`url` the bare URL for callers that build the link themselves",
+        "`json` label and href as separate fields for callers that build the "
+        "link themselves, `url` the bare URL alone",
     )
     parser.add_argument("--model", required=True, help="model identifier, e.g. claude-opus-5")
     parser.add_argument(
@@ -119,6 +139,12 @@ def parse_args(argv=None):
     )
     parser.add_argument("--date", help="ISO date, e.g. 2026-08-10")
     parser.add_argument("--agent", help="agent or tool, e.g. claude-code")
+    parser.add_argument(
+        "--body-file",
+        metavar="PATH",
+        help="attach the mark to the message in PATH (`-` reads stdin) and "
+        "print the whole message; only for the four platforms",
+    )
     parser.add_argument(
         "--tooltip",
         action="store_true",
@@ -136,6 +162,12 @@ def parse_args(argv=None):
     )
 
     args = parser.parse_args(argv)
+
+    if args.body_file is not None and args.platform not in PLATFORMS:
+        parser.error(
+            "--body-file only works with a platform (%s); html, json and url "
+            "hand over pieces for you to place" % ", ".join(PLATFORMS)
+        )
 
     args.model = normalize(args.model)
     args.text = normalize(args.text)
@@ -160,6 +192,25 @@ def parse_args(argv=None):
 def main(argv=None):
     args = parse_args(argv)
 
+    body = None
+    if args.body_file is not None:
+        try:
+            if args.body_file == "-":
+                body = sys.stdin.read()
+            else:
+                with open(args.body_file, encoding="utf-8") as handle:
+                    body = handle.read()
+        except OSError as error:
+            print("cannot read --body-file: %s" % error, file=sys.stderr)
+            return 1
+        # Only trailing whitespace goes: the mark sits after the final
+        # punctuation, separated by a single space, and the body itself is the
+        # caller's message — passed through, never rewritten.
+        body = body.rstrip()
+        if not body:
+            print("--body-file is empty: there is no message to mark", file=sys.stderr)
+            return 1
+
     tooltip = None
     if args.tooltip:
         if args.platform in TOOLTIP_TARGETS:
@@ -178,7 +229,8 @@ def main(argv=None):
         date=args.date,
         agent=args.agent,
     )
-    print(format_link(args.platform, url, tooltip))
+    link = format_link(args.platform, url, tooltip)
+    print(body + " " + link if body else link)
     return 0
 
 

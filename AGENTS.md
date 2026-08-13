@@ -31,7 +31,7 @@ Their shared contract is the **URL fragment schema** — a change to it touches 
    The frontmatter `description` is what triggers the skill automatically.
 2. **`skills/colophon/scripts/sigil.py`** — the mechanism.
    Encodes the parameters into the fragment and wraps the URL in one platform's link dialect.
-   Prints exactly one line to stdout; warnings go to stderr so output stays pipe-safe.
+   Prints exactly one line to stdout — or, with `--body-file`, the caller's message with the mark attached; warnings go to stderr so output stays pipe-safe.
 3. **`index.html`** — the display.
    A single static page, served by GitHub Pages from `main` root, that decodes the fragment client-side.
    Falls back to its legend view on missing/broken parameters; unknown parameters are ignored so the schema can grow.
@@ -47,7 +47,8 @@ This is a deliberate privacy decision; do not rebuild it on `?`.
 
 ### Platforms vs. targets in sigil.py
 
-`PLATFORMS` (slack, jira, github, trello) are destinations; `TARGETS` adds two generic targets: the `html` dialect (an XML-safe anchor with `&amp;`-escaped href, for markup bodies) and `url` (no link dialect at all — the bare URL, for callers that keep href and label in separate fields, e.g. Jira ADF).
+`PLATFORMS` (slack, jira, github, trello) are destinations; `TARGETS` adds three generic targets: the `html` dialect (an XML-safe anchor with `&amp;`-escaped href, for markup bodies), `json` (label and href as separate fields, for callers that build the link themselves — the label rides along so the character never comes from memory, e.g. Jira ADF) and `url` (no link dialect at all — the bare href alone).
+`MARK_TARGETS` (the four platforms + html) are the dialects whose output is the finished mark, label included — only their output can carry a damaged label, so the damage tests loop over them; `--body-file` is narrower still and works on the four `PLATFORMS` only.
 `TOOLTIP_TARGETS` (github, html) are the two dialects with a native hover title.
 **Tests derive their coverage from these tuples** — a new target added there is automatically exercised by the loop-based tests.
 Keep that property when extending.

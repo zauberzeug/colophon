@@ -1,6 +1,6 @@
 ---
 name: colophon
-description: Builds the Colophon sigil `※` — a link at the end of a line that declares AI co-authorship — for Jira, Slack, GitHub and Trello, plus an HTML anchor for mail and wiki pages and a bare URL for callers that build the link themselves. Use it whenever a comment, ticket, PR description, issue, e-mail or message is written and the AI contributed substantially, even without an explicit request to mark it. Never write the character by hand — build the link with scripts/sigil.py and paste its output verbatim. Not for git commits (those use the Assisted-by trailer).
+description: Builds the Colophon sigil `※` — a link at the end of a line that declares AI co-authorship — for Jira, Slack, GitHub and Trello, plus an HTML anchor for mail and wiki pages and a label+URL pair for callers that build the link themselves. Use it whenever a comment, ticket, PR description, issue, e-mail or message is written and the AI contributed substantially, even without an explicit request to mark it. Never write the character by hand — let scripts/sigil.py attach it to your message (--body-file) or paste its output verbatim. Not for git commits (those use the Assisted-by trailer).
 ---
 
 # Colophon
@@ -88,17 +88,27 @@ A wrong model name is worse than an imprecise one.
 ## Calling the script
 
 Do not build the encoding or the link dialects by hand — always call the script.
-It prints exactly one line to stdout.
 
-For the four platforms that line is the finished sigil: paste it verbatim.
-The two remaining targets are not platforms and are not pasted into a text box:
-`html` emits markup for a body that stores markup, and `url` prints a bare URL for callers that build the link themselves.
-Pick by what the target stores, not by what it is called — see the two sections below.
+For the four platforms, prefer handing it the whole message: `--body-file` reads your text from a file (`-` reads stdin) and prints it back with the mark attached — after the final punctuation, separated by a space.
+The character never passes through your hands, so it cannot be dropped or damaged on the way.
 
 ```bash
-python3 scripts/sigil.py --platform <slack|jira|github|trello|html|url> \
+python3 scripts/sigil.py --platform github --model claude-opus-5 \
+  --text "Wording from the model, substance from the author." \
+  --body-file draft.md
+```
+
+Without `--body-file` the script prints exactly one line: for the four platforms the finished sigil — paste it verbatim at the end of your text.
+The three remaining targets are not platforms and are not pasted into a text box:
+`html` emits markup for a body that stores markup, `json` prints label and href as separate fields for callers that build the link themselves, and `url` prints the bare address alone.
+None of them takes `--body-file` — they hand over pieces for you to place.
+Pick by what the target stores, not by what it is called — see the sections below.
+
+```bash
+python3 scripts/sigil.py --platform <slack|jira|github|trello|html|json|url> \
                          --model <id> \
                          --text "<free text>" \
+                         [--body-file <path|->] \
                          [--date YYYY-MM-DD] [--agent <id>] [--tooltip] [--unapproved]
 ```
 
@@ -118,7 +128,7 @@ python3 scripts/sigil.py --platform slack --model claude-opus-5 \
 ### Jira
 
 Wiki markup works on Server/DC and is converted by Cloud on paste — when in doubt, use it.
-If you build ADF directly, take `--platform url` and make that URL the `href` of a link mark on the text `※` — see "Building the link yourself" below.
+If you build ADF directly, take `--platform json` and copy both fields from its output into the text node and its link mark — see "Building the link yourself" below.
 
 ```bash
 python3 scripts/sigil.py --platform jira --model claude-opus-5 \
@@ -170,7 +180,7 @@ python3 scripts/sigil.py --platform html --model claude-opus-5 \
 **This output is source, not text.**
 It belongs where markup is what gets stored — the HTML body of a mail sent via API, a Confluence storage-format page, a template.
 In a visual editor that treats what you type as literal text — the Gmail compose window, a rich-text comment box — pasting it shows the angle brackets to the reader instead of a link.
-There, use the editor's own insert-link command with `※` as the text and `--platform url` for the address.
+There, use the editor's own insert-link command, copying the text and the address from `--platform json` — both fields, neither from memory.
 
 The `&` between the fragment parameters comes out as `&amp;`.
 This is what makes the anchor safe in the strict case: read as XML — Confluence storage format, XHTML — a bare `&` is a parse error that rejects the whole document, and an HTML parser may read one as the start of a character reference.
@@ -189,22 +199,29 @@ A short personal reply stays unmarked, as everywhere else.
 
 ### Building the link yourself
 
-`--platform url` prints the bare URL and nothing else.
-Use it when the target keeps label and href in separate fields — Jira ADF, most API payloads, the insert-link dialog of a visual editor.
+`--platform json` prints the two fields every link is made of, ready to copy:
 
 ```bash
-python3 scripts/sigil.py --platform url --model claude-opus-5 \
+python3 scripts/sigil.py --platform json --model claude-opus-5 \
   --text "Wording from the model, substance from the author."
 ```
+
+```json
+{"label": "※", "href": "https://zauberzeug.github.io/colophon/#m=claude-opus-5&t=…"}
+```
+
+Use it when the target keeps label and href in separate fields — Jira ADF, most API payloads, the insert-link dialog of a visual editor.
+In ADF the two fields land here:
 
 ```json
 {"type": "text", "text": "※", "marks": [{"type": "link", "attrs": {"href": "<URL>"}}]}
 ```
 
 The reader still sees only `※`; the URL sits in the attribute.
-The label is always `※`, wherever the target keeps its link text.
+Copy **both** values from the output — the label field exists so the character itself never has to come from memory, which is exactly how a naked sigil once went out.
 
-The URL separates its parameters with raw `&`, which is right for a JSON payload like the ADF above and for a dialog that takes the address as a string.
+`--platform url` prints the href alone, for a caller that already carries the label.
+Either way the URL separates its parameters with raw `&`, which is right for a JSON payload like the ADF above and for a dialog that takes the address as a string.
 If you are writing the URL into markup yourself, do not escape it by hand — take `--platform html`, which emits the whole anchor correctly escaped.
 Do not cut the URL out of another platform's output either; that output is meant to be pasted verbatim.
 
@@ -221,6 +238,7 @@ Two failures put a broken colophon in front of a reader, and neither is visible 
 Only the URL is percent-encoded; everything after `|` in `<url|label>`, or inside `[…]` in `[label](url)`, is display text.
 
 So: never type the character into a link by hand, and never retype the script's output — paste it.
+Better still, on the four platforms, let the script attach the mark itself (`--body-file` above): where nothing is carried, nothing is dropped.
 
 ```bash
 python3 scripts/check.py "Ordered the parts. ※"   # exit 1 + reason on stderr

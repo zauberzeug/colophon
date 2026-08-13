@@ -4,22 +4,33 @@
 import contextlib
 import html
 import io
+import json
 import os
 import sys
+import tempfile
 import unittest
 from urllib.parse import parse_qs, unquote, urlsplit
 from xml.etree import ElementTree
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
+import check  # noqa: E402
 import sigil  # noqa: E402
 
 
-def run(argv):
+def run(argv, stdin=None):
     """Call main() and return (stdout, stderr) with the trailing newline stripped."""
     out, err = io.StringIO(), io.StringIO()
     with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
-        sigil.main(argv)
+        if stdin is None:
+            sigil.main(argv)
+        else:
+            original = sys.stdin
+            sys.stdin = io.StringIO(stdin)
+            try:
+                sigil.main(argv)
+            finally:
+                sys.stdin = original
     return out.getvalue().strip(), err.getvalue()
 
 
@@ -377,11 +388,133 @@ class TestUrlTarget(unittest.TestCase):
         self.assertTrue(out.startswith("https://"))
         self.assertNotIn('"', out)
 
-    def test_neither_url_nor_html_is_listed_as_a_platform(self):
-        """PLATFORMS stays the destinations; TARGETS adds the two generic ones."""
-        for target in ("url", "html"):
+    def test_no_generic_target_is_listed_as_a_platform(self):
+        """PLATFORMS stays the destinations; TARGETS adds the generic ones."""
+        for target in ("html", "json", "url"):
             self.assertNotIn(target, sigil.PLATFORMS)
             self.assertIn(target, sigil.TARGETS)
+
+    def test_only_dialects_with_a_label_are_mark_targets(self):
+        """`json` and `url` hand over pieces; only html joins the platforms."""
+        self.assertEqual(sigil.MARK_TARGETS, sigil.PLATFORMS + ("html",))
+
+
+class TestJsonTarget(unittest.TestCase):
+    """`--platform json` — label and href as fields, so neither travels by memory.
+
+    The naked-sigil incident happened because the character came from memory
+    with no rule beside it. A caller building a link (Jira ADF, Block Kit, an
+    insert-link dialog) used to get only the href and had to know the label;
+    now both fields sit in the output, ready to copy.
+    """
+
+    ARGS = ["--model", "claude-opus-5", "--text", "Drafted by the model."]
+
+    def test_prints_label_and_href_as_one_json_object(self):
+        out, _ = run(["--platform", "json"] + self.ARGS)
+        pair = json.loads(out)
+        self.assertEqual(sorted(pair), ["href", "label"])
+        self.assertEqual(pair["label"], sigil.SIGIL)
+        self.assertEqual(
+            pair["href"], sigil.build_url("claude-opus-5", "Drafted by the model.")
+        )
+
+    def test_the_label_is_the_literal_character_not_an_escape(self):
+        # The output is the copy source for the label; a JSON-escaped label
+        # (backslash-u-203b on screen) would put the escape sequence, not the
+        # character, into the clipboard.
+        out, _ = run(["--platform", "json"] + self.ARGS)
+        self.assertIn(sigil.SIGIL, out)
+        self.assertNotIn("\\u", out)
+
+    def test_optional_parameters_still_apply(self):
+        out, _ = run(
+            ["--platform", "json", "--unapproved", "--date", "2026-08-10",
+             "--agent", "claude-code"] + self.ARGS
+        )
+        params = params_of(json.loads(out)["href"])
+        self.assertEqual(params["p"], ["agent"])
+        self.assertEqual(params["d"], ["2026-08-10"])
+        self.assertEqual(params["a"], ["claude-code"])
+
+
+class TestComposition(unittest.TestCase):
+    """`--body-file` — the message goes in, the message with the mark comes out.
+
+    Both observed failures happened while a hand carried the mark from the
+    script's output into a message. Composition removes the hand-off: the
+    character never passes through the caller.
+    """
+
+    ARGS = ["--model", "claude-opus-5", "--text", "Drafted by the model."]
+
+    def test_stdin_body_gets_the_mark_attached(self):
+        mark, _ = run(["--platform", "github"] + self.ARGS)
+        out, _ = run(
+            ["--platform", "github", "--body-file", "-"] + self.ARGS,
+            stdin="Ordered the parts.\n",
+        )
+        self.assertEqual(out, "Ordered the parts. " + mark)
+
+    def test_file_body_gets_the_mark_attached(self):
+        mark, _ = run(["--platform", "slack"] + self.ARGS)
+        with tempfile.NamedTemporaryFile("w", suffix=".md", delete=False) as handle:
+            handle.write("Ordered the parts.\n")
+            path = handle.name
+        try:
+            out, _ = run(["--platform", "slack", "--body-file", path] + self.ARGS)
+        finally:
+            os.unlink(path)
+        self.assertEqual(out, "Ordered the parts. " + mark)
+
+    def test_a_multi_paragraph_body_is_passed_through_unchanged(self):
+        body = "First paragraph.\n\nSecond paragraph, with detail."
+        mark, _ = run(["--platform", "trello"] + self.ARGS)
+        out, _ = run(
+            ["--platform", "trello", "--body-file", "-"] + self.ARGS, stdin=body + "\n"
+        )
+        self.assertEqual(out, body + " " + mark)
+
+    def test_every_composed_message_passes_the_write_path_check(self):
+        # Derived from the tuple: a new platform is covered the day it lands.
+        for platform in sigil.PLATFORMS:
+            with self.subTest(platform=platform):
+                out, _ = run(
+                    ["--platform", platform, "--body-file", "-"] + self.ARGS,
+                    stdin="Ordered the parts.\n",
+                )
+                self.assertFalse(check.is_broken_mark(out))
+
+    def test_assembly_targets_refuse_a_body(self):
+        # html, json and url hand over pieces; there is no tail to attach to.
+        for target in [t for t in sigil.TARGETS if t not in sigil.PLATFORMS]:
+            with self.subTest(target=target):
+                with contextlib.redirect_stdout(io.StringIO()), \
+                        contextlib.redirect_stderr(io.StringIO()):
+                    with self.assertRaises(SystemExit) as caught:
+                        sigil.main(["--platform", target, "--body-file", "-"] + self.ARGS)
+                self.assertNotEqual(caught.exception.code, 0)
+
+    def test_an_empty_body_is_an_error(self):
+        err = io.StringIO()
+        original = sys.stdin
+        sys.stdin = io.StringIO("   \n")
+        try:
+            with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(err):
+                code = sigil.main(["--platform", "github", "--body-file", "-"] + self.ARGS)
+        finally:
+            sys.stdin = original
+        self.assertEqual(code, 1)
+        self.assertIn("empty", err.getvalue())
+
+    def test_an_unreadable_file_is_an_error_not_a_traceback(self):
+        err = io.StringIO()
+        with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(err):
+            code = sigil.main(
+                ["--platform", "github", "--body-file", "/nonexistent/draft.md"] + self.ARGS
+            )
+        self.assertEqual(code, 1)
+        self.assertIn("--body-file", err.getvalue())
 
 
 class TestBaseUrl(unittest.TestCase):
