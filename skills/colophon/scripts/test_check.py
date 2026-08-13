@@ -116,8 +116,14 @@ class LostLabels(unittest.TestCase):
     def test_an_empty_label_on_a_legend_link_is_broken(self):
         self.assertTrue(check.is_broken_mark("Done. <%s|>" % LEGEND))
 
+    def test_an_encoded_label_is_broken_even_on_a_foreign_url(self):
+        self.assertTrue(check.is_broken_mark("Done. <https://example.com/x|%E2%80%BB>"))
+
     def test_a_word_label_on_a_foreign_link_passes(self):
         self.assertFalse(check.is_broken_mark("Done. [docs](https://example.com/docs)"))
+
+    def test_a_foreign_fragment_starting_with_m_is_not_a_legend_url(self):
+        self.assertFalse(check.is_broken_mark("Done. [docs](https://example.com/page#m=2)"))
 
 
 class MentionsAreNotMarks(unittest.TestCase):
@@ -177,6 +183,11 @@ class DeliberateGaps(unittest.TestCase):
     def test_mid_text_damage_escapes(self):
         self.assertFalse(check.is_broken_mark("Done. <%s|%%E2%%80%%BB> Thanks!" % LEGEND))
 
+    def test_a_quoted_last_line_is_never_checked(self):
+        # The quotation exemption cannot tell quoted damage from new damage
+        # a blockquote-formatted sender produces itself.
+        self.assertFalse(check.is_broken_mark("> I ordered the parts myself. ※"))
+
 
 class BoundedTail(unittest.TestCase):
     def test_a_damaged_mark_behind_a_huge_prefix_is_still_caught(self):
@@ -184,7 +195,8 @@ class BoundedTail(unittest.TestCase):
         self.assertTrue(check.is_broken_mark(text))
 
     def test_a_bracket_flood_passes_without_stalling(self):
-        # Unbounded, this input was quadratic; TAIL_BOUND keeps it flat.
+        # The derived character classes scan linearly; TAIL_BOUND caps even
+        # a pathological future shape.
         self.assertFalse(check.is_broken_mark("[" * 100000))
 
 

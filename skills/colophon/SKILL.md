@@ -226,7 +226,7 @@ So: never type the character into a link by hand, and never retype the script's 
 python3 scripts/check.py "Ordered the parts. ※"   # exit 1 + reason on stderr
 ```
 
-It checks position, not presence: a trailing link in one of `sigil.py`'s shapes must carry the literal `※` as its label, and a trailing naked `※` or `%E2%80%BB` is broken; mid-sentence the character is a mention and is left alone.
+It checks position, not presence: a trailing link whose label is the percent-encoding, or a legend link labelled anything but `※`, is broken, as is a trailing naked `※` or `%E2%80%BB`; mid-sentence the character is a mention and is left alone.
 Integrations with their own tool layer call `is_broken_mark` from `scripts/check.py` at whatever assembles their outgoing text — with `label_field=True` for a payload field that keeps href and label apart.
 
 ## Tests

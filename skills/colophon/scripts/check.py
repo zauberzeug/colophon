@@ -31,8 +31,9 @@ Callers that check a structured payload's label field pass
 The deliberate prices of the tail rule, in the open: damage that is not the
 last thing in the text escapes (``… ※ [docs](…)``, ``… ※.``, a footer after
 the mark, a damaged link mid-text), a mark buried deeper than ``TAIL_BOUND``
-escapes the bounded scan — and a sentence that legitimately *ends* in the
-bare character is flagged, which writing it as a code span avoids.
+escapes the bounded scan, a text whose last line is a quotation is never
+checked at all — and a sentence that legitimately *ends* in the bare
+character is flagged, which writing it as a code span avoids.
 """
 
 import re
@@ -97,6 +98,12 @@ REASON = (
 USAGE = "usage: check.py [TEXT | -]   (one argument; `-` or no argument reads stdin)"
 
 
+def _is_legend_url(url):
+    """The schema build_url writes: a fragment opening with m= and carrying t=."""
+    fragment = url.rpartition("#")[2]
+    return fragment.startswith("m=") and ("&t=" in fragment or "&amp;t=" in fragment)
+
+
 def is_broken_mark(text, label_field=False):
     """True if the text ends in something sigil-shaped that is not a working mark."""
     tail = (text or "").rstrip()
@@ -114,7 +121,7 @@ def is_broken_mark(text, label_field=False):
             return False
         if label.upper() == ENCODED:
             return True  # the observed damage: the encoding where the character belongs
-        return "#m=" in match.group("url")  # a legend link labelled anything else lost its mark
+        return _is_legend_url(match.group("url"))  # a legend link labelled anything else lost its mark
     return tail.endswith(SIGIL) or tail.upper().endswith(ENCODED)
 
 

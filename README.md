@@ -183,7 +183,7 @@ The rule keys on **position, not presence**: only a sigil in trailing position i
 A trailing link in one of `sigil.py`'s shapes must carry the literal `※` as its label — a label that is the percent-encoding is the observed damage, and a link to the legend page labelled anything else has lost its mark the same way; a trailing naked `※` or `%E2%80%BB` is broken too.
 The shapes are derived from `sigil.py` itself rather than transcribed, so a new target is guarded automatically.
 Mid-sentence the character is a mention — as in this paragraph — and stays untouched, as does a code span holding either form, a line quoted with `>`, and a label field checked with `is_broken_mark(text, label_field=True)` by payloads that keep href and label apart.
-The rule's deliberate gaps are pinned in the tests: damage that is not the last thing in the text escapes, and a sentence that legitimately ends in the bare character is flagged — a code span avoids that.
+The rule's deliberate gaps are pinned in the tests: damage that is not the last thing in the text escapes, a quoted last line is never checked, and a sentence that legitimately ends in the bare character is flagged — a code span avoids that.
 A presence check would reject correct writing, which is how a guard earns its way back out of a codebase.
 
 ## Development
