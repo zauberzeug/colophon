@@ -1,6 +1,6 @@
 ---
 name: colophon
-description: Builds the Colophon sigil `※` — a link at the end of a line that declares AI co-authorship — for Jira, Slack, GitHub and Trello, plus an HTML anchor for mail and wiki pages and a bare URL for callers that build the link themselves. Use it whenever a comment, ticket, PR description, issue, e-mail or message is written and the AI contributed substantially, even without an explicit request to mark it. Not for git commits (those use the Assisted-by trailer).
+description: Builds the Colophon sigil `※` — a link at the end of a line that declares AI co-authorship — for Jira, Slack, GitHub and Trello, plus an HTML anchor for mail and wiki pages and a bare URL for callers that build the link themselves. Use it whenever a comment, ticket, PR description, issue, e-mail or message is written and the AI contributed substantially, even without an explicit request to mark it. Never write the character by hand — build the link with scripts/sigil.py and paste its output verbatim. Not for git commits (those use the Assisted-by trailer).
 ---
 
 # Colophon
@@ -226,8 +226,8 @@ So: never type the character into a link by hand, and never retype the script's 
 python3 scripts/check.py "Ordered the parts. ※"   # exit 1 + reason on stderr
 ```
 
-Installed as a plugin, this runs by itself as a `PreToolUse` hook on `Bash` and MCP calls.
-It checks position, not presence: a sigil at the end of a text is a mark and must be a link; mid-sentence it is a mention and is left alone.
+It checks position, not presence: a sigil at the end of a text is a mark and must be a working link; mid-sentence it is a mention and is left alone.
+Integrations with their own tool layer call `is_broken_mark` from `scripts/check.py` at whatever assembles their outgoing text.
 
 ## Tests
 

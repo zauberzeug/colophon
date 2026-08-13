@@ -173,28 +173,21 @@ Or the link can be built correctly and the **label** damaged in transit: the URL
 The link still worked; the reader saw eight literal characters.
 
 Nothing in `sigil.py` can prevent either: the damage happens after it has printed the right answer.
-The check therefore lives at the write path:
+The check therefore belongs at the write path — call `is_broken_mark` from `skills/colophon/scripts/check.py` (stdlib only, one function) wherever your outgoing text is assembled, or use it as a command:
 
 ```bash
 python3 skills/colophon/scripts/check.py "Ordered the parts. ※"   # exit 1 + reason on stderr
 ```
 
-In Claude Code the plugin wires it up for you as a `PreToolUse` hook (`hooks/hooks.json`).
-It watches `Bash` and MCP calls — where outgoing text lives — and denies a call carrying a broken mark, handing the reason back so the model can fix the text and repeat the call.
-Local files (`Write`, `Edit`) are deliberately not covered: there a sigil is content, not a message.
-
-Elsewhere, call `find_violations` from `check.py` at whatever assembles your outgoing text.
-The rule is the reusable part; the hook is one wiring of it.
-
-The rule keys on **position, not presence**: only a sigil in trailing position is a mark and must be a link.
-Mid-sentence it is a mention — as in this paragraph — and stays untouched.
+The rule keys on **position, not presence**: only a sigil in trailing position is a mark and must be a working link.
+Mid-sentence it is a mention — as in this paragraph — and stays untouched, as does a code span holding an example and a lone `※` in the label field of a payload that keeps href and label apart.
 A presence check would reject correct writing, which is how a guard earns its way back out of a codebase.
 
 ## Development
 
 ```bash
 python3 skills/colophon/scripts/test_sigil.py   # tests, stdlib only
-python3 skills/colophon/scripts/test_check.py   # guard tests, incl. the hook end to end
+python3 skills/colophon/scripts/test_check.py   # write-path rule tests
 python3 -m http.server 8000                     # preview the page locally
 COLOPHON_BASE=http://localhost:8000/ python3 skills/colophon/scripts/sigil.py …
 ```

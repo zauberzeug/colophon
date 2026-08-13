@@ -2,145 +2,74 @@
 """Reject a colophon that arrives broken.
 
 The sigil is not a decoration, it is a link: the statement lives on the page
-behind it. Two ways that link comes apart, both observed in the first day of
-real use, both invisible to the agent that caused them:
+behind it. Two ways the link comes apart, both observed in the first day of
+real use, both invisible to the agent that caused them: a text ends in a naked
+``※`` with no link at all, or the link is built and its label is ``%E2%80%BB``
+— the percent-encoded form of the character, right in the URL half and wrong
+in the display half. Nothing in ``sigil.py``'s own output can prevent either;
+the damage happens after it has printed the right answer. So the rule lives
+here, for whatever assembles outgoing text — an agent gateway, a bot
+framework, a posting script — to call at its write path.
 
-    bare-sigil                  a text ends with a naked ``※`` and no link
-    link-without-sigil-label    a link to the legend page whose label is not ``※``
-    sigil-links-elsewhere       a trailing ``※`` links somewhere other than the legend
-
-The second one is worth spelling out, because it looks like a typo and is not.
-``sigil.py`` emits ``<URL|※>``; the URL half is percent-encoded throughout
-(``%20``, ``%3B``, ``%2C``) and the label half must stay literal. An agent
-copying that line into a posting script wrote ``%E2%80%BB`` — the percent-encoded
-form of the character — into the label. The link worked; the reader saw eight
-literal characters where the mark should be.
-
-Nothing in the sigil's own output can prevent that: the corruption happens
-after the script has printed the right answer. It needs a check at the write
-path, which is what this module is for. ``hooks/colophon_guard.py`` wires it
-into Claude Code as a ``PreToolUse`` hook; other integrations call
-``find_violations`` from wherever their own outgoing text is assembled.
-
-Position matters, not presence. Only a sigil in trailing position is a *mark*
-and must be a link; mid-sentence it is a *mention*, and anyone documenting or
-discussing the system writes plenty of those. A presence check rejects correct
-behaviour, which is how a guard earns its way out of a codebase.
+Position, not presence: only a sigil in trailing position is a mark and must
+be a working link. Mid-sentence it is a mention, a code span holds an example,
+and a lone ``※`` is a label field in a structured payload that keeps href and
+label apart — all of that passes untouched, because the rule never looks at
+anything but the tail. The deliberate price: a bare sigil that is *not* the
+last thing in the text escapes.
 """
 
-import argparse
 import re
 import sys
 
-SIGIL = "※"  # ※ REFERENCE MARK
+SIGIL = "※"  # U+203B REFERENCE MARK
+ENCODED = "%E2%80%BB"  # its percent-encoding — right in the URL, wrong as a label
 
-# Code spans hold examples, not marks.
-_CODE_SPAN = re.compile(r"```.*?```|`[^`]*`", re.DOTALL)
-
-# The link dialects sigil.py emits, anchored at the end of the text — the only
-# place a mark may stand.
-_TRAILING_LINK = (
-    re.compile(r"<(?P<url>[^<>|]+)\|" + SIGIL + r"\s*>\s*$"),                            # slack
-    re.compile(r"\[" + SIGIL + r"\]\(\s*(?P<url>[^\s()]+)(?:\s+\"[^\"]*\")?\s*\)\s*$"),  # markdown
-    re.compile(r"\[" + SIGIL + r"\|(?P<url>[^\]]+)\]\s*$"),                              # jira
-    re.compile(                                                                          # html
-        r"<a\s[^>]*href=[\"'](?P<url>[^\"']+)[\"'][^>]*>\s*" + SIGIL + r"\s*</a>\s*$",
-        re.IGNORECASE,
-    ),
+# A correct mark: the four link dialects sigil.py emits, at the very end.
+_GOOD_TAIL = re.compile(
+    r"(?:<[^<>|]+\|" + SIGIL + r"\s*>"                      # slack
+    r"|\[" + SIGIL + r"\]\([^\s()]+(?:\s+\"[^\"]*\")?\)"    # markdown
+    r"|\[" + SIGIL + r"\|[^\]]+\]"                          # jira
+    r"|<a\s[^>]*>\s*" + SIGIL + r"\s*</a>)\s*$"             # html
+)
+# The same shapes with the label captured, whatever it turned out to be.
+_TAIL_LINK = re.compile(
+    r"(?:<[^<>|]*\|([^<>]*)>"
+    r"|\[([^\]]*)\]\([^\s()]*(?:\s+\"[^\"]*\")?\)"
+    r"|\[([^\]|]*)\|[^\]]*\]"
+    r"|<a\s[^>]*>([^<]*)</a>)\s*$",
+    re.IGNORECASE,
 )
 
-# The same dialects, unanchored and capturing the label: a legend link is a
-# mark wherever it stands.
-_ANY_LINK = (
-    re.compile(r"<(?P<url>[^<>|]+)\|(?P<label>[^<>]*)>"),
-    re.compile(r"\[(?P<label>[^\]]*)\]\(\s*(?P<url>[^\s()]+)(?:\s+\"[^\"]*\")?\s*\)"),
-    re.compile(r"\[(?P<label>[^\]|]*)\|(?P<url>[^\]]+)\]"),
-    re.compile(r"<a\s[^>]*href=[\"'](?P<url>[^\"']+)[\"'][^>]*>(?P<label>[^<]*)</a>", re.IGNORECASE),
+REASON = (
+    "The text ends in a broken colophon: a naked ※ without its link, or a link whose label "
+    "is the percent-encoded %E2%80%BB. The mark IS the link, and only the URL half is "
+    "encoded — everything after the separator is DISPLAY TEXT and carries the literal "
+    "character. Build the mark with sigil.py and paste its output unchanged at the end; "
+    "if no marking was intended, drop the character."
 )
 
 
-def is_legend_url(url):
-    """A link to the colophon page, recognised by the fragment, not the host.
-
-    ``sigil.py`` always builds ``#m=<model>``, whatever ``COLOPHON_BASE`` says.
-    Matching on the word "colophon" instead would swallow links to the
-    repository, which are ordinary source links and keep their own label.
-    """
-    candidate = (url or "").strip()
-    return bool(re.match(r"^https?://", candidate, re.IGNORECASE)) and "#m=" in candidate
-
-
-def _ends_in_quotation(text):
-    lines = [line for line in text.splitlines() if line.strip()]
-    return bool(lines) and lines[-1].lstrip().startswith(">")
-
-
-def find_violations(text):
-    """Return stable rule names for a colophon that is not a working link."""
-    body = (text or "").rstrip()
-    violations = []
-
-    for pattern in _ANY_LINK:
-        for match in pattern.finditer(body):
-            if is_legend_url(match.group("url")) and match.group("label").strip() != SIGIL:
-                violations.append("link-without-sigil-label")
-                break
-        if violations:
-            break
-
-    if SIGIL not in body:
-        return violations
-
-    for pattern in _TRAILING_LINK:
-        match = pattern.search(body)
-        if match:
-            if not is_legend_url(match.group("url")):
-                violations.append("sigil-links-elsewhere")
-            return violations
-
-    if _ends_in_quotation(body):
-        return violations
-
-    masked = _CODE_SPAN.sub(lambda m: " " * len(m.group(0)), body).rstrip()
-    if masked.endswith(SIGIL):
-        violations.append("bare-sigil")
-    return violations
-
-
-def explain(violations):
-    """One actionable sentence per rule, addressed to whoever wrote the text."""
-    if "link-without-sigil-label" in violations:
-        return (
-            "A link to the colophon page does not carry the sigil as its label. In <url|label> "
-            "and [label](url) everything after the separator is DISPLAY TEXT: the literal "
-            "character belongs there, not its percent-encoded form (%E2%80%BB) and not a word. "
-            "Only the URL is encoded. Paste the output of sigil.py unchanged instead of "
-            "retyping it."
-        )
-    if "sigil-links-elsewhere" in violations:
-        return (
-            "The trailing sigil links somewhere other than the colophon page. The mark IS the "
-            "link — build it with sigil.py and use the output verbatim."
-        )
-    return (
-        "The text ends in a bare sigil. Without its link the mark says nothing at all: the "
-        "model, the date and the division of labour live on the page behind it. Either drop "
-        "the mark (ordinary chat, reminders and questions do not carry one) or build it with "
-        "sigil.py and put the output at the end."
-    )
+def is_broken_mark(text):
+    """True if the text ends in something sigil-shaped that is not a working mark."""
+    tail = (text or "").rstrip()
+    if tail == SIGIL:
+        return False  # a label field in a structured payload, not a message
+    if _GOOD_TAIL.search(tail):
+        return False
+    match = _TAIL_LINK.search(tail)
+    if match:
+        label = next(group for group in match.groups() if group is not None)
+        return ENCODED in label.upper()
+    return tail.endswith(SIGIL)
 
 
 def main(argv=None):
-    parser = argparse.ArgumentParser(
-        description="Check that a colophon sigil in a text is a working link.",
-    )
-    parser.add_argument("text", nargs="?", default="-", help="text to check, or '-' for stdin")
-    args = parser.parse_args(argv)
-    text = sys.stdin.read() if args.text == "-" else args.text
-    violations = find_violations(text)
-    if not violations:
+    argv = sys.argv[1:] if argv is None else argv
+    text = sys.stdin.read() if argv in ([], ["-"]) else argv[0]
+    if not is_broken_mark(text):
         return 0
-    print("%s [%s]" % (explain(violations), ", ".join(violations)), file=sys.stderr)
+    print(REASON, file=sys.stderr)
     return 1
 
 
