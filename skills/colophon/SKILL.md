@@ -81,9 +81,21 @@ The former name `--self-posted` still works, but it names the wrong rule: who pr
 
 ## Model identifier
 
-Take it from the running context, lowercase with hyphens, e.g. `claude-opus-5`.
-When unsure — after a model switch mid-session, say — prefer coarse (`claude`) over falsely precise.
+The model slug names the underlying LLM, not the agent or tool running it.
+Take it from the running context, lowercase with hyphens.
+
+| Agent/tool | Model slug examples |
+|---|---|
+| Claude Code | `claude-opus-5`, `claude-sonnet-4`, `claude` (coarse fallback) |
+| Qwen Code | `qwen3.7-plus`, `qwen-max`, `qwen` (coarse fallback) |
+| Codex | `o3`, `o4-mini`, `openai` (coarse fallback) |
+
+When unsure — after a model switch mid-session, say — prefer coarse (`claude`, `qwen`) over falsely precise.
 A wrong model name is worse than an imprecise one.
+
+**How to find it:** The agent should know its own model from startup context or configuration.
+If the agent cannot determine the model, use the coarse family name (`claude`, `qwen`, `openai`).
+Do not use the agent/tool name as the model slug (e.g. `qwen-code` is wrong; `qwen3.7-plus` is correct).
 
 ## Calling the script
 
