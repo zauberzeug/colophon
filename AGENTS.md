@@ -12,7 +12,8 @@ The repo ships a Claude Code skill (and doubles as its own plugin marketplace), 
 Python 3 standard library only — no dependencies, no build step, no linter configured.
 
 ```bash
-python3 skills/colophon/scripts/test_sigil.py                          # all tests
+python3 skills/colophon/scripts/test_sigil.py                          # sigil.py tests
+python3 skills/colophon/scripts/test_check.py                          # check.py tests
 python3 skills/colophon/scripts/test_sigil.py TestEncoding.test_round_trip   # single test (unittest syntax: Class or Class.method)
 
 # preview the page locally, and point the script at it:
@@ -22,9 +23,8 @@ COLOPHON_BASE=http://localhost:8000/ python3 skills/colophon/scripts/sigil.py --
 
 ## Architecture
 
-Three components share no code.
-Their shared contract is the **URL fragment schema** — a change to it touches all three.
-`SKILL.md` additionally pins `sigil.py`'s CLI flags and output shape (some examples elide the URL with `…`), so interface changes to the script touch the skill as well.
+Four components; the first three share no code, and their shared contract is the **URL fragment schema** — a change to it touches them all.
+`SKILL.md` additionally pins the CLI and API shape of both scripts (some examples elide the URL with `…`), so interface changes to `sigil.py` or `check.py` touch the skill as well.
 
 1. **`skills/colophon/SKILL.md`** — the policy layer.
    Tells the agent *when* to mark, how to write the free text (division of labour, honesty rule, no review claims), and when `--unapproved` may stay off.
@@ -35,6 +35,9 @@ Their shared contract is the **URL fragment schema** — a change to it touches 
 3. **`index.html`** — the display.
    A single static page, served by GitHub Pages from `main` root, that decodes the fragment client-side.
    Falls back to its legend view on missing/broken parameters; unknown parameters are ignored so the schema can grow.
+4. **`skills/colophon/scripts/check.py`** — the guard.
+   Rejects outgoing text that ends in a broken mark: a naked sigil, or a trailing link whose label lost the character.
+   Imports `sigil.py` and derives its tail patterns from `format_link`, so a target added to `TARGETS` is guarded automatically and the two files travel together.
 
 ### The URL schema
 
@@ -76,7 +79,7 @@ Work as a pair programmer, not a silent code generator:
 
 ## Before Claiming a Task Complete
 
-1. `python3 skills/colophon/scripts/test_sigil.py` passes.
+1. `python3 skills/colophon/scripts/test_sigil.py` and `python3 skills/colophon/scripts/test_check.py` pass.
 2. Documentation stays consistent: `README.md`, `SKILL.md` and the legend text in `index.html` describe the same behavior; the duplicated plugin descriptions in `.claude-plugin/plugin.json` and `.claude-plugin/marketplace.json` match.
 3. Review your own diff for unintended scope creep.
 
