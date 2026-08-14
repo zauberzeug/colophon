@@ -33,7 +33,7 @@ Nothing to invoke.
 The agent appends the sigil itself whenever it has substantially co-written a comment, ticket or message — no prompting needed, and it decides where the threshold lies.
 The rules it follows are in [skills/colophon/SKILL.md](skills/colophon/SKILL.md).
 
-To build a sigil by hand, call the script (Python 3, standard library only):
+To build a sigil yourself, call the script (Python 3, standard library only):
 
 ```bash
 $ python3 skills/colophon/scripts/sigil.py --platform slack --model claude-opus-5 \
