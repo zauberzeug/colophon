@@ -56,6 +56,8 @@ Bad:
 
 > Dana asked for this follow-up. *(third person about the person whose account it goes out under — see below)*
 
+> Assembled by the model; posted from my account. *(the account already shows who posted — only the first half says anything)*
+
 ### Honesty rule
 
 The free text describes the *actual* share.
@@ -64,13 +66,20 @@ No flattering, but no downplaying either.
 
 ### Whose voice the free text is in
 
-The sigil sits inside the contribution, so it inherits the contribution's sender.
-Posted under a person's account — the main case, since the sigil exists for contributions under a human name — the free text is written in that person's first person: "…; posted from my account", never "Dana asked for this".
-A third-person mention of the account holder reads like someone else writing from the wrong account, which is the exact confusion the sigil exists to remove.
-Under the AI's own account the rule points the other way: there the agent is "I", and a human who asked for the text is named in the third person.
+Write the free text in the voice of the account the contribution goes out under.
 
-The free text is visible payload, not a metadata field.
-Whatever identity rule governs the contribution governs it too, so check it with the body rather than after it: search the finished free text for the account holder's name — every hit is suspect.
+Under a person's account — the case the sigil exists for — that is their first person:
+
+> My bullet points, written out by the model.
+
+Written as "Dana's bullet points, written out by the model" and posted from Dana's own account, it reads as if someone else were writing from her account — the confusion the sigil is there to remove.
+Under the AI's own account it is the other way round: the agent is "I", the person who asked is named.
+
+**Person, not extra words.**
+"…; posted from my account" says what the account already shows — the same waste as "Created with AI support".
+Only the naming changes with the sender, never the content.
+
+The free text goes out with the message, so check it with the message: search it for the account holder's name, and look twice at every hit.
 
 ### No claims about review
 
