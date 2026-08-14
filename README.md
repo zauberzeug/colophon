@@ -182,17 +182,20 @@ That output is meant to be pasted verbatim; a change to its wrapping would break
 A colophon can arrive damaged in two ways, and both are invisible to whoever caused them.
 A sigil can be written **without its link** — then it says nothing at all, because the model, the date and the division of labour live on the page behind it.
 Or the link can be built correctly and the **label** damaged in transit: the URL half is percent-encoded throughout, and an agent copying the line into a posting script wrote `%E2%80%BB` — the encoded form of the character — where the literal one belongs.
-The link still worked; the reader saw eight literal characters.
+The link still worked; the reader saw nine literal characters.
 
 Both failures happened while a hand carried the mark from the script's output into a message, so the first guard is to remove the hand-off: `--body-file` lets `sigil.py` attach the mark to the message itself, and `--platform json` hands link builders both fields so neither comes from memory.
-For whatever still assembles text by hand, the check belongs at the write path — call `is_broken_mark` from `skills/colophon/scripts/check.py` (stdlib only, one function) wherever your outgoing text is assembled, or use it as a command:
+For whatever still assembles text by hand, the check belongs at the write path — call `is_broken_mark` from `skills/colophon/scripts/check.py` (stdlib only, travels with `sigil.py`) wherever your outgoing text is assembled, or use it as a command:
 
 ```bash
 python3 skills/colophon/scripts/check.py "Ordered the parts. ※"   # exit 1 + reason on stderr
 ```
 
-The rule keys on **position, not presence**: only a sigil in trailing position is a mark and must be a working link.
-Mid-sentence it is a mention — as in this paragraph — and stays untouched, as does a code span holding an example and a lone `※` in the label field of a payload that keeps href and label apart.
+The rule keys on **position, not presence**: only a sigil in trailing position is a mark.
+A trailing link in one of `sigil.py`'s shapes must carry the literal `※` as its label — a label that is the percent-encoding is the observed damage, and a link to the legend page labelled anything else has lost its mark the same way; a trailing naked `※` or `%E2%80%BB` is broken too.
+The shapes are derived from `sigil.py` itself rather than transcribed, so a new mark target is guarded automatically.
+Mid-sentence the character is a mention — as in this paragraph — and stays untouched, as does a code span holding either form, a line quoted with `>`, and a label field checked with `is_broken_mark(text, label_field=True)` by payloads that keep href and label apart.
+The rule's deliberate gaps are pinned in the tests: damage that is not the last thing in the text escapes, a quoted last line is never checked, and a sentence that legitimately ends in the bare character is flagged — a code span avoids that.
 A presence check would reject correct writing, which is how a guard earns its way back out of a codebase.
 
 ## Development

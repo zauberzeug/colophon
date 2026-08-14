@@ -1,6 +1,6 @@
 ---
 name: colophon
-description: Builds the Colophon sigil `※` — a link at the end of a line that declares AI co-authorship — for Jira, Slack, GitHub and Trello, plus an HTML anchor for mail and wiki pages and a label+URL pair for callers that build the link themselves. Use it whenever a comment, ticket, PR description, issue, e-mail or message is written and the AI contributed substantially, even without an explicit request to mark it. Never write the character by hand — let scripts/sigil.py attach it to your message (--body-file) or paste its output verbatim. Not for git commits (those use the Assisted-by trailer).
+description: Builds the Colophon sigil `※` — a link at the end of a line that declares AI co-authorship — for Jira, Slack, GitHub and Trello, plus an HTML anchor for mail and wiki pages and a label+URL pair for callers that build the link themselves. Use it whenever a comment, ticket, PR description, issue, e-mail or message is written and the AI contributed substantially, even without an explicit request to mark it. Never write the character by hand — invoke this skill, then let its sigil.py script attach it to your message (--body-file) or paste the script's output verbatim. Not for git commits (those use the Assisted-by trailer).
 ---
 
 # Colophon
@@ -235,7 +235,7 @@ Do not cut the URL out of another platform's output either; that output is meant
 ## The mark is the link
 
 Two failures put a broken colophon in front of a reader, and neither is visible to the agent that caused it: a sigil **without** a link says nothing, and a link whose **label** is not the literal character (`%E2%80%BB`, or a word) renders as that text instead of the mark.
-Only the URL is percent-encoded; everything after `|` in `<url|label>`, or inside `[…]` in `[label](url)`, is display text.
+Only the URL half is percent-encoded; the label half is display text and carries the literal `※` — after the `|` in Slack's `<url|※>`, before the `|` in Jira's `[※|url]`, inside the brackets in markdown's `[※](url)`.
 
 So: never type the character into a link by hand, and never retype the script's output — paste it.
 Better still, on the four platforms, let the script attach the mark itself (`--body-file` above): where nothing is carried, nothing is dropped.
@@ -244,8 +244,8 @@ Better still, on the four platforms, let the script attach the mark itself (`--b
 python3 scripts/check.py "Ordered the parts. ※"   # exit 1 + reason on stderr
 ```
 
-It checks position, not presence: a sigil at the end of a text is a mark and must be a working link; mid-sentence it is a mention and is left alone.
-Integrations with their own tool layer call `is_broken_mark` from `scripts/check.py` at whatever assembles their outgoing text.
+It checks position, not presence: a trailing link whose label is the percent-encoding, or a legend link labelled anything but `※`, is broken, as is a trailing naked `※` or `%E2%80%BB`; mid-sentence the character is a mention and is left alone.
+Integrations with their own tool layer call `is_broken_mark` from `scripts/check.py` at whatever assembles their outgoing text — with `label_field=True` for a payload field that keeps href and label apart.
 
 ## Tests
 
