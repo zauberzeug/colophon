@@ -53,6 +53,8 @@ Ordered the parts. [※](https://zauberzeug.github.io/colophon/#m=claude-opus-5&
 ```
 
 — so the character never passes through anyone's hands on the way into a message.
+When the last line is block markup that would swallow an inline suffix — a closing code fence, a quoted line — the mark becomes its own final paragraph instead.
+And a message that already ends in a mark is refused: one sigil per contribution, and a damaged mark wants repair, not a second mark on top.
 
 In **git commits** the convention remains the `Assisted-by: Claude:claude-opus-5` trailer rather than the sigil — different readers, different places.
 

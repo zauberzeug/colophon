@@ -12,6 +12,11 @@ pipe.
 Both observed colophon failures happened while a hand carried the mark from
 this script's output into a message. `--body-file` removes the hand-off for
 the four platforms: the message goes in, the message with the mark comes out.
+The mark rides at the end of the last line — or as its own final paragraph
+when that line is block markup that would swallow an inline suffix (a closing
+code fence, a quoted line). A message that already ends in a mark is refused:
+one sigil per contribution, and a damaged mark wants repair, not a second
+mark on top.
 
 Three targets are not platforms: `--platform html` emits an anchor for
 anything whose body is markup (an HTML mail, a Confluence page), `--platform
@@ -50,6 +55,14 @@ MARK_TARGETS = PLATFORMS + ("html",)
 
 # Dialects whose syntax carries a native hover title.
 TOOLTIP_TARGETS = ("github", "html")
+
+# Last lines that swallow an inline suffix instead of ending a sentence: text
+# after a closing code fence stops the line from closing the fence at all, and
+# on a quoted line the mark would join someone else's words. Markdown fences
+# and quotes cover slack, github and trello; the Jira dialect adds its block
+# closers and bq. quotation. A prefix list, not a markup parser — an indented
+# code block (no prefix character) is the named gap.
+BLOCK_TAILS = ("```", "~~~", ">", "bq.", "{code}", "{quote}", "{noformat}")
 
 
 def base_url():
@@ -114,6 +127,17 @@ def format_link(platform, url, tooltip=None):
 
 def tooltip_text(model, text):
     return "%s: %s" % (model, text)
+
+
+def needs_own_paragraph(body):
+    """True if the body's last line would swallow an inline mark."""
+    return body.rsplit("\n", 1)[-1].lstrip().startswith(BLOCK_TAILS)
+
+
+def attach_mark(body, link):
+    """Append the mark after the final punctuation, separated by a space —
+    or as its own final paragraph when the last line is block markup."""
+    return body + ("\n\n" if needs_own_paragraph(body) else " ") + link
 
 
 def parse_args(argv=None):
@@ -203,12 +227,23 @@ def main(argv=None):
         except (OSError, UnicodeDecodeError) as error:
             print("cannot read --body-file: %s" % error, file=sys.stderr)
             return 1
-        # Only trailing whitespace goes: the mark sits after the final
-        # punctuation, separated by a single space, and the body itself is the
-        # caller's message — passed through, never rewritten.
+        # Only trailing whitespace goes: the body itself is the caller's
+        # message — passed through, never rewritten. Where the mark lands
+        # is attach_mark's call.
         body = body.rstrip()
         if not body:
             print("--body-file is empty: there is no message to mark", file=sys.stderr)
+            return 1
+        # Local import: check.py imports sigil at load, so a module-level
+        # import back would tangle when check.py is run directly.
+        import check
+
+        # A quoted or fenced tail gets the mark as its own paragraph, so a
+        # mark inside it is someone else's text — only an inline tail can
+        # already be marked. A damaged mark is refused too: it wants repair,
+        # not a fresh mark burying it.
+        if not needs_own_paragraph(body) and check.ends_in_mark(body):
+            print("--body-file already ends in a mark: one sigil per contribution", file=sys.stderr)
             return 1
 
     tooltip = None
@@ -230,7 +265,7 @@ def main(argv=None):
         agent=args.agent,
     )
     link = format_link(args.platform, url, tooltip)
-    print(body + " " + link if body else link)
+    print(attach_mark(body, link) if body else link)
     return 0
 
 

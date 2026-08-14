@@ -168,6 +168,38 @@ class LabelFields(unittest.TestCase):
         self.assertTrue(check.is_broken_mark("%E2%80%BB", label_field=True))
 
 
+class ComposerAsksFirst(unittest.TestCase):
+    """`sigil.py --body-file` calls ends_in_mark before attaching: one sigil
+    per contribution, and damage is repaired, never buried under a fresh mark."""
+
+    def test_every_mark_dialect_counts(self):
+        for target in sigil.MARK_TARGETS:
+            with self.subTest(target=target):
+                link = sigil.format_link(target, LEGEND)
+                self.assertTrue(check.ends_in_mark("Ordered the parts. " + link))
+
+    def test_a_damaged_label_counts(self):
+        self.assertTrue(check.ends_in_mark("Done. <%s|%%E2%%80%%BB>" % LEGEND))
+
+    def test_a_naked_or_encoded_tail_counts(self):
+        for tail in ("Ordered the parts. ※", "Ordered the parts. %E2%80%BB"):
+            with self.subTest(tail=tail):
+                self.assertTrue(check.ends_in_mark(tail))
+
+    def test_a_lost_label_on_a_legend_link_counts(self):
+        self.assertTrue(check.ends_in_mark("Done. [see colophon](%s)" % LEGEND))
+
+    def test_plain_text_does_not(self):
+        self.assertFalse(check.ends_in_mark("Ordered the parts."))
+
+    def test_a_foreign_prose_link_does_not(self):
+        # A prose link with its own label is not a mark; composing onto it stays legal.
+        self.assertFalse(check.ends_in_mark("Done. [docs](https://example.com/docs)"))
+
+    def test_a_code_span_mention_does_not(self):
+        self.assertFalse(check.ends_in_mark("The character is `※`"))
+
+
 class DeliberateGaps(unittest.TestCase):
     """The price of the tail rule, pinned so a change to it is a decision."""
 

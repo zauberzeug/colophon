@@ -20,6 +20,11 @@ patterns cannot drift from what ``sigil.py`` actually emits. ``json`` and
 ``url`` stay out by tuple: they hand over pieces for a caller to assemble, so
 damage to them is caught at assembly (``label_field=True``), not in a tail.
 
+The composing side asks the same machinery the opposite question:
+``sigil.py --body-file`` calls ``ends_in_mark`` before attaching, so a
+message never receives a second mark and a damaged one never gets a fresh
+mark buried on top.
+
 Position, not presence: only a sigil in trailing position is a mark. A
 trailing link in one of ``sigil.py``'s shapes must carry the literal ``※`` as
 its label; a label that is the percent-encoding is the observed damage, and a
@@ -90,9 +95,9 @@ REASON = (
     "whose label is not the literal character. Only the URL half of a link is "
     "percent-encoded; the label half is display text and carries %(sigil)s itself — "
     "after the | in Slack's <url|%(sigil)s>, before the | in Jira's [%(sigil)s|url], "
-    "inside the brackets in markdown's [%(sigil)s](url). Build the mark with sigil.py "
-    "and paste its output unchanged at the end; if no marking was intended, drop the "
-    "character."
+    "inside the brackets in markdown's [%(sigil)s](url). Let sigil.py attach the mark "
+    "itself (--body-file), or paste its output unchanged at the end; if no marking "
+    "was intended, drop the character."
 ) % {"sigil": SIGIL, "encoded": ENCODED}
 
 USAGE = "usage: check.py [TEXT | -]   (one argument; `-` or no argument reads stdin)"
@@ -104,6 +109,15 @@ def _is_legend_url(url):
     return fragment.startswith("m=") and ("&t=" in fragment or "&amp;t=" in fragment)
 
 
+def _tail_link(tail):
+    """The link shape the tail ends in, as a match object, or None."""
+    for pattern in _TAIL_PATTERNS:
+        match = pattern.search(tail)
+        if match:
+            return match
+    return None
+
+
 def is_broken_mark(text, label_field=False):
     """True if the text ends in something sigil-shaped that is not a working mark."""
     tail = (text or "").rstrip()
@@ -112,16 +126,33 @@ def is_broken_mark(text, label_field=False):
     if tail.rsplit("\n", 1)[-1].lstrip().startswith(">"):
         return False  # the tail is a quotation — someone else's text
     tail = tail[-TAIL_BOUND:]
-    for pattern in _TAIL_PATTERNS:
-        match = pattern.search(tail)
-        if not match:
-            continue
+    match = _tail_link(tail)
+    if match:
         label = match.group("label").strip()
         if label == SIGIL:
             return False
         if label.upper() == ENCODED:
             return True  # the observed damage: the encoding where the character belongs
         return _is_legend_url(match.group("url"))  # a legend link labelled anything else lost its mark
+    return tail.endswith(SIGIL) or tail.upper().endswith(ENCODED)
+
+
+def ends_in_mark(text):
+    """True if the text already ends in a mark — intact or damaged.
+
+    The composing side's question: `sigil.py --body-file` asks before
+    attaching, so one contribution never carries two sigils and damage never
+    disappears under a fresh mark. A trailing link that is not sigil-shaped —
+    a prose link with its own label on a foreign URL — is not a mark, so
+    composing onto it stays legal.
+    """
+    tail = (text or "").rstrip()[-TAIL_BOUND:]
+    match = _tail_link(tail)
+    if match:
+        label = match.group("label").strip()
+        if label == SIGIL or label.upper() == ENCODED:
+            return True
+        return _is_legend_url(match.group("url"))  # a legend link under any label was meant as a mark
     return tail.endswith(SIGIL) or tail.upper().endswith(ENCODED)
 
 

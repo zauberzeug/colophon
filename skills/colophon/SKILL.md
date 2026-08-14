@@ -91,6 +91,8 @@ Do not build the encoding or the link dialects by hand — always call the scrip
 
 For the four platforms, prefer handing it the whole message: `--body-file` reads your text from a file (`-` reads stdin) and prints it back with the mark attached — after the final punctuation, separated by a space.
 The character never passes through your hands, so it cannot be dropped or damaged on the way.
+When the last line is block markup that would swallow an inline suffix — a closing code fence, a quoted line — the mark becomes its own final paragraph instead.
+A message that already ends in a mark — even a damaged one — is refused: one sigil per contribution.
 
 ```bash
 python3 scripts/sigil.py --platform github --model claude-opus-5 \

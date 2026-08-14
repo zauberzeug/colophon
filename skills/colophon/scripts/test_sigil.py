@@ -485,6 +485,65 @@ class TestComposition(unittest.TestCase):
                 )
                 self.assertFalse(check.is_broken_mark(out))
 
+    def test_a_body_ending_in_a_code_fence_gets_the_mark_as_its_own_paragraph(self):
+        # Inline, the mark would stop the last line from closing the fence at
+        # all — the mark lands inside the code block and the fence stays open.
+        body = "Fixed the loop:\n\n```py\nprint(1)\n```"
+        mark, _ = run(["--platform", "github"] + self.ARGS)
+        out, _ = run(
+            ["--platform", "github", "--body-file", "-"] + self.ARGS, stdin=body + "\n"
+        )
+        self.assertEqual(out, body + "\n\n" + mark)
+        self.assertFalse(check.is_broken_mark(out))
+
+    def test_a_body_ending_in_a_quotation_gets_the_mark_as_its_own_paragraph(self):
+        # Inline, the mark would join someone else's words.
+        body = "Falko wrote:\n> ship it as is."
+        mark, _ = run(["--platform", "github"] + self.ARGS)
+        out, _ = run(
+            ["--platform", "github", "--body-file", "-"] + self.ARGS, stdin=body + "\n"
+        )
+        self.assertEqual(out, body + "\n\n" + mark)
+
+    def test_every_block_tail_gets_the_mark_as_its_own_paragraph(self):
+        # Derived from the tuple: a new block prefix is covered the day it lands.
+        for prefix in sigil.BLOCK_TAILS:
+            with self.subTest(prefix=prefix):
+                body = "Details above.\n" + prefix
+                mark, _ = run(["--platform", "jira"] + self.ARGS)
+                out, _ = run(
+                    ["--platform", "jira", "--body-file", "-"] + self.ARGS,
+                    stdin=body + "\n",
+                )
+                self.assertEqual(out, body + "\n\n" + mark)
+
+    def test_a_body_already_marked_is_refused(self):
+        # One sigil per contribution — composing must not add a second.
+        mark, _ = run(["--platform", "github"] + self.ARGS)
+        err = io.StringIO()
+        original = sys.stdin
+        sys.stdin = io.StringIO("Ordered the parts. " + mark + "\n")
+        try:
+            with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(err):
+                code = sigil.main(["--platform", "github", "--body-file", "-"] + self.ARGS)
+        finally:
+            sys.stdin = original
+        self.assertEqual(code, 1)
+        self.assertIn("already ends in a mark", err.getvalue())
+
+    def test_a_body_with_a_broken_mark_is_refused(self):
+        # A damaged mark wants repair, not a fresh mark burying it.
+        err = io.StringIO()
+        original = sys.stdin
+        sys.stdin = io.StringIO("Ordered the parts. ※\n")
+        try:
+            with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(err):
+                code = sigil.main(["--platform", "github", "--body-file", "-"] + self.ARGS)
+        finally:
+            sys.stdin = original
+        self.assertEqual(code, 1)
+        self.assertIn("already ends in a mark", err.getvalue())
+
     def test_assembly_targets_refuse_a_body(self):
         # html, json and url hand over pieces; there is no tail to attach to.
         for target in [t for t in sigil.TARGETS if t not in sigil.PLATFORMS]:

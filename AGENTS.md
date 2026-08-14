@@ -38,6 +38,7 @@ Four components; the first three share no code, and their shared contract is the
 4. **`skills/colophon/scripts/check.py`** — the guard.
    Rejects outgoing text that ends in a broken mark: a naked sigil, or a trailing link whose label lost the character.
    Imports `sigil.py` and derives its tail patterns from `format_link`, so a target added to `MARK_TARGETS` is guarded automatically and the two files travel together.
+   Also answers the composing side's question — `ends_in_mark` — so `--body-file` never doubles a mark or buries a damaged one.
 
 ### The URL schema
 
