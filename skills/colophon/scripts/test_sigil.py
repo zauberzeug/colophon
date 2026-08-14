@@ -516,6 +516,21 @@ class TestComposition(unittest.TestCase):
         self.assertEqual(code, 1)
         self.assertIn("--body-file", err.getvalue())
 
+    def test_a_non_utf8_file_is_an_error_not_a_traceback(self):
+        # Reading a Latin-1 draft raises UnicodeDecodeError, not OSError;
+        # the clean message must cover that path too.
+        with tempfile.NamedTemporaryFile("wb", suffix=".md", delete=False) as handle:
+            handle.write("Bestellt: Teile für das Gerät.\n".encode("latin-1"))
+            path = handle.name
+        err = io.StringIO()
+        try:
+            with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(err):
+                code = sigil.main(["--platform", "github", "--body-file", path] + self.ARGS)
+        finally:
+            os.unlink(path)
+        self.assertEqual(code, 1)
+        self.assertIn("--body-file", err.getvalue())
+
 
 class TestBaseUrl(unittest.TestCase):
     def test_default_base(self):

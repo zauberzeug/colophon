@@ -6,7 +6,7 @@ with the mark attached. Warnings go to stderr so the output stays usable in a
 pipe.
 
     sigil.py --platform slack --model claude-opus-5 --text "Drafted by the model."
-    echo "Ordered the parts." | sigil.py --platform slack --model claude-opus-5 \
+    echo "Ordered the parts." | sigil.py --platform slack --model claude-opus-5 \\
         --text "Drafted by the model." --body-file -
 
 Both observed colophon failures happened while a hand carried the mark from
@@ -200,7 +200,7 @@ def main(argv=None):
             else:
                 with open(args.body_file, encoding="utf-8") as handle:
                     body = handle.read()
-        except OSError as error:
+        except (OSError, UnicodeDecodeError) as error:
             print("cannot read --body-file: %s" % error, file=sys.stderr)
             return 1
         # Only trailing whitespace goes: the mark sits after the final
