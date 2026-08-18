@@ -175,5 +175,6 @@ COLOPHON_BASE=http://localhost:8000/ python3 skills/colophon/scripts/sigil.py �
 
 GitHub Pages serves `index.html` from `main`, root — no build step.
 The page renders entirely client-side and falls back to its explanation view on missing or broken parameters.
+Its text is available in English, German, Spanish, French, Portuguese, Chinese and Japanese: the language follows the browser, can be switched in the top corner of the page and is remembered locally — a reader preference, not part of the link.
 
 The repository doubles as its own plugin marketplace: `.claude-plugin/marketplace.json` lists this repo (`source: "./"`) as the single plugin, and a plugin loads its skills from `skills/`.
