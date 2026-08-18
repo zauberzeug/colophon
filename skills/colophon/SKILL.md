@@ -163,6 +163,10 @@ python3 scripts/sigil.py --platform github --model claude-opus-5 \
 [※](https://zauberzeug.github.io/colophon/#m=… "claude-opus-5: Wording from the model, substance from the author.")
 ```
 
+Never let the sigil follow an HTML block — a closing `</details>` above all — without a blank line between them.
+In GitHub Markdown a block like this one runs until a blank line, so a sigil on the closing line *or on the line after it* is still inside it and posts as the literal text `[※](…)`.
+A comment whose last element is a collapsed section is where "after the final punctuation, separated by a normal space" leads you astray: blank line first, then the sigil in its own paragraph.
+
 ### Trello
 
 Plain Markdown, no tooltip.
