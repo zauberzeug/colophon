@@ -35,6 +35,7 @@ Their shared contract is the **URL fragment schema** — a change to it touches 
 3. **`index.html`** — the display.
    A single static page, served by GitHub Pages from `main` root, that decodes the fragment client-side.
    Falls back to its legend view on missing/broken parameters; unknown parameters are ignored so the schema can grow.
+   The page chrome is translated (`STRINGS` in the script; English is the markup itself and the fallback for missing keys): the reader's language is detected from the browser, switchable in the top corner of the page and remembered in `localStorage` — a display preference, deliberately not part of the URL schema.
 
 ### The URL schema
 
@@ -78,6 +79,7 @@ Work as a pair programmer, not a silent code generator:
 
 1. `python3 skills/colophon/scripts/test_sigil.py` passes.
 2. Documentation stays consistent: `README.md`, `SKILL.md` and the legend text in `index.html` describe the same behavior; the duplicated plugin descriptions in `.claude-plugin/plugin.json` and `.claude-plugin/marketplace.json` match.
+   A wording change in `index.html` touches every language in `STRINGS`, not just the English markup.
 3. Review your own diff for unintended scope creep.
 
 ## Git & Pull Requests

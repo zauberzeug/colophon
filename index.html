@@ -52,6 +52,7 @@
   }
 
   main {
+    position: relative;
     max-width: 34rem;
     margin: 0 auto;
   }
@@ -166,67 +167,290 @@
 
   .disclaimer p { margin: 0; }
 
+  .lang {
+    position: absolute;
+    top: 0.5rem;
+    right: 0;
+    font-size: 0.8125rem;
+    color: var(--muted);
+  }
+
+  .lang summary {
+    list-style: none;
+    cursor: pointer;
+  }
+
+  .lang summary::-webkit-details-marker { display: none; }
+
+  .lang summary::after { content: "▾"; margin-left: 0.25em; }
+
+  .lang summary:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  .lang ul {
+    position: absolute;
+    right: 0;
+    margin: 0.375rem 0 0;
+    padding: 0.375rem 0;
+    list-style: none;
+    background: var(--bg);
+    border: 1px solid var(--rule);
+    border-radius: 2px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  }
+
+  .lang button {
+    display: block;
+    width: 100%;
+    padding: 0.25rem 1rem;
+    font: inherit;
+    color: var(--fg);
+    text-align: left;
+    white-space: nowrap;
+    background: none;
+    border: 0;
+    cursor: pointer;
+  }
+
+  .lang button:hover,
+  .lang button:focus-visible { background: var(--quote-bg); outline: none; }
+
+  .lang button[aria-current="true"] { color: var(--accent); }
+
   [hidden] { display: none !important; }
 </style>
 </head>
 <body>
 <main>
 
+  <!-- Language switch: filled in by the script, useless without it -->
+  <details class="lang" id="lang" hidden><summary aria-label="Language"></summary><ul></ul></details>
+
   <span class="sigil" aria-hidden="true">※</span>
 
   <!-- Detail view: shown only when the URL carries a colophon -->
   <section id="detail" hidden>
-    <h1>This contribution was written with AI support.</h1>
+    <h1 data-i18n="detail-title">This contribution was written with AI support.</h1>
 
-    <p class="label">Model</p>
+    <p class="label" data-i18n="model">Model</p>
     <p class="model" id="model"></p>
 
     <div id="text-block" hidden>
-      <p class="label">What the AI contributed</p>
+      <p class="label" data-i18n="contributed">What the AI contributed</p>
       <blockquote><p id="text"></p></blockquote>
     </div>
 
     <dl class="meta" id="meta" hidden>
-      <div id="row-date" hidden><dt>Date</dt><dd id="date"></dd></div>
-      <div id="row-agent" hidden><dt>Agent</dt><dd id="agent"></dd></div>
+      <div id="row-date" hidden><dt data-i18n="date">Date</dt><dd id="date"></dd></div>
+      <div id="row-agent" hidden><dt data-i18n="agent">Agent</dt><dd id="agent"></dd></div>
     </dl>
 
     <div class="responsibility" id="responsibility">
-      <p>Whoever approved this contribution answers for it.</p>
+      <p data-i18n="responsibility">Whoever approved this contribution answers for it.</p>
     </div>
 
     <div class="agent-notice" id="agent-notice" hidden>
-      <p>Nobody approved this contribution before it went out — no human gave the go for this text.</p>
+      <p data-i18n="agent-notice">Nobody approved this contribution before it went out — no human gave the go for this text.</p>
     </div>
 
-    <p><a href="./">What is this? →</a></p>
+    <p><a href="./" data-i18n="what-is-this">What is this? →</a></p>
   </section>
 
   <!-- Legend: the default view, works without JavaScript too -->
   <section id="legend">
-    <h1>A character at the end of a line, signalling: this text was written with AI support.</h1>
+    <h1 data-i18n="legend-title">A character at the end of a line, signalling: this text was written with AI support.</h1>
 
-    <p>When a comment, ticket or message ends in <span class="code">※</span>, an AI phrased the text or contributed to its substance. Clicking the character leads here and shows which model was involved and what it contributed.</p>
+    <p data-i18n="legend-intro" data-i18n-html>When a comment, ticket or message ends in <span class="code">※</span>, an AI phrased the text or contributed to its substance. Clicking the character leads here and shows which model was involved and what it contributed.</p>
 
     <div id="raw-block" hidden>
-      <p>The address you followed was incomplete, but it carried this text:</p>
+      <p data-i18n="raw-intro">The address you followed was incomplete, but it carried this text:</p>
       <blockquote><p id="raw-text"></p></blockquote>
     </div>
 
-    <p>Approval is the endorsement: whoever releases a text — by hitting “send”, or by reading an agent’s draft and giving the go — answers for the content, exactly as with text they typed themselves. Only the exception is marked separately — if a contribution went out without anyone approving it, this page says so.</p>
+    <p data-i18n="legend-approval">Approval is the endorsement: whoever releases a text — by hitting “send”, or by reading an agent’s draft and giving the go — answers for the content, exactly as with text they typed themselves. Only the exception is marked separately — if a contribution went out without anyone approving it, this page says so.</p>
 
-    <p>What the mark carries is never sent to a server — it sits in the link itself. This page is static: no cookies, nothing loaded, nothing measured.</p>
+    <p data-i18n="legend-privacy">What the mark carries is never sent to a server — it sits in the link itself. This page is static: no cookies, nothing loaded, nothing measured.</p>
 
-    <p>To use it yourself, give your agent <a href="https://github.com/zauberzeug/colophon">the Colophon skill</a> — it appends the mark on its own.</p>
+    <p data-i18n="legend-skill" data-i18n-html>To use it yourself, give your agent <a href="https://github.com/zauberzeug/colophon">the Colophon skill</a> — it appends the mark on its own.</p>
   </section>
 
   <div class="disclaimer">
-    <p>Stated by the agent at the time of writing. Not a measurement, not an independent review.</p>
+    <p data-i18n="disclaimer">Stated by the agent at the time of writing. Not a measurement, not an independent review.</p>
   </div>
 
 </main>
 
 <script>
+(function () {
+  // The reader's language is a display preference: detected from the browser, switchable at the
+  // foot of the page, remembered in localStorage. It is not part of the URL schema.
+  // English is the markup itself and doubles as the fallback for any key a language lacks.
+  // Keys hold plain text, except the two marked data-i18n-html in the markup, which carry the
+  // sigil span and the skill link and are applied as HTML.
+  var STRINGS = {
+    de: {
+      'detail-title': 'Dieser Beitrag wurde mit KI-Unterstützung geschrieben.',
+      'model': 'Modell',
+      'contributed': 'Was die KI beigetragen hat',
+      'date': 'Datum',
+      'agent': 'Agent',
+      'responsibility': 'Wer diesen Beitrag freigegeben hat, steht dafür ein.',
+      'agent-notice': 'Niemand hat diesen Beitrag freigegeben, bevor er hinausging — kein Mensch hat für diesen Text grünes Licht gegeben.',
+      'what-is-this': 'Was ist das? →',
+      'legend-title': 'Ein Zeichen am Zeilenende, das signalisiert: Dieser Text wurde mit KI-Unterstützung geschrieben.',
+      'legend-intro': 'Endet ein Kommentar, ein Ticket oder eine Nachricht mit <span class="code">※</span>, hat eine KI den Text formuliert oder inhaltlich beigetragen. Ein Klick auf das Zeichen führt hierher und zeigt, welches Modell beteiligt war und was es beigetragen hat.',
+      'raw-intro': 'Die aufgerufene Adresse war unvollständig, enthielt aber diesen Text:',
+      'legend-approval': 'Freigeben heißt gutheißen: Wer einen Text herausgibt — durch einen Klick auf „Senden“ oder indem der Entwurf eines Agenten gelesen und freigegeben wird — steht für den Inhalt ein, genau wie für selbst getippten Text. Nur die Ausnahme wird eigens markiert — ging ein Beitrag hinaus, ohne dass ihn jemand freigegeben hat, sagt diese Seite das.',
+      'legend-privacy': 'Was das Zeichen trägt, wird nie an einen Server gesendet — es steckt im Link selbst. Diese Seite ist statisch: keine Cookies, nichts wird nachgeladen, nichts gemessen.',
+      'legend-skill': 'Wer es selbst nutzen möchte, gibt seinem Agenten <a href="https://github.com/zauberzeug/colophon">den Colophon-Skill</a> — er hängt das Zeichen von allein an.',
+      'disclaimer': 'Angabe des Agenten zum Zeitpunkt des Schreibens. Keine Messung, keine unabhängige Prüfung.',
+      'language': 'Sprache'
+    },
+    es: {
+      'detail-title': 'Esta contribución se escribió con apoyo de IA.',
+      'model': 'Modelo',
+      'contributed': 'Qué aportó la IA',
+      'date': 'Fecha',
+      'agent': 'Agente',
+      'responsibility': 'Quien aprobó esta contribución responde por ella.',
+      'agent-notice': 'Nadie aprobó esta contribución antes de que saliera: ninguna persona dio el visto bueno a este texto.',
+      'what-is-this': '¿Qué es esto? →',
+      'legend-title': 'Un carácter al final de una línea que señala: este texto se escribió con apoyo de IA.',
+      'legend-intro': 'Cuando un comentario, un ticket o un mensaje termina en <span class="code">※</span>, una IA redactó el texto o contribuyó a su contenido. Al hacer clic en el carácter se llega aquí y se muestra qué modelo participó y qué aportó.',
+      'raw-intro': 'La dirección seguida estaba incompleta, pero contenía este texto:',
+      'legend-approval': 'La aprobación es el respaldo: quien publica un texto —pulsando «enviar» o leyendo el borrador de un agente y dando el visto bueno— responde por el contenido, exactamente igual que por un texto que hubiera escrito por sí mismo. Solo la excepción se marca aparte: si una contribución salió sin que nadie la aprobara, esta página lo dice.',
+      'legend-privacy': 'Lo que lleva la marca nunca se envía a un servidor: está en el propio enlace. Esta página es estática: sin cookies, sin cargar nada, sin medir nada.',
+      'legend-skill': 'Para usarlo, basta con dar al agente <a href="https://github.com/zauberzeug/colophon">el skill Colophon</a>: añade la marca por sí solo.',
+      'disclaimer': 'Declarado por el agente en el momento de escribir. No es una medición ni una revisión independiente.',
+      'language': 'Idioma'
+    },
+    fr: {
+      'detail-title': 'Cette contribution a été rédigée avec l’aide d’une IA.',
+      'model': 'Modèle',
+      'contributed': 'Ce que l’IA a apporté',
+      'date': 'Date',
+      'agent': 'Agent',
+      'responsibility': 'Quiconque a approuvé cette contribution en répond.',
+      'agent-notice': 'Personne n’a approuvé cette contribution avant sa publication — aucun humain n’a donné son feu vert à ce texte.',
+      'what-is-this': 'Qu’est-ce que c’est ? →',
+      'legend-title': 'Un caractère en fin de ligne qui signale : ce texte a été rédigé avec l’aide d’une IA.',
+      'legend-intro': 'Lorsqu’un commentaire, un ticket ou un message se termine par <span class="code">※</span>, une IA a formulé le texte ou contribué à son contenu. Un clic sur le caractère mène ici et indique quel modèle a participé et ce qu’il a apporté.',
+      'raw-intro': 'L’adresse suivie était incomplète, mais elle contenait ce texte :',
+      'legend-approval': 'L’approbation vaut endossement : quiconque publie un texte — en cliquant sur « envoyer », ou en lisant le brouillon d’un agent et en donnant son feu vert — répond de son contenu, exactement comme d’un texte tapé de sa propre main. Seule l’exception est signalée à part : si une contribution est partie sans que personne ne l’approuve, cette page le dit.',
+      'legend-privacy': 'Ce que porte la marque n’est jamais envoyé à un serveur — tout tient dans le lien lui-même. Cette page est statique : pas de cookies, rien de chargé, rien de mesuré.',
+      'legend-skill': 'Pour l’utiliser, il suffit de donner à son agent <a href="https://github.com/zauberzeug/colophon">le skill Colophon</a> — il ajoute la marque de lui-même.',
+      'disclaimer': 'Déclaré par l’agent au moment de la rédaction. Ni une mesure, ni une revue indépendante.',
+      'language': 'Langue'
+    },
+    pt: {
+      'detail-title': 'Esta contribuição foi escrita com apoio de IA.',
+      'model': 'Modelo',
+      'contributed': 'O que a IA contribuiu',
+      'date': 'Data',
+      'agent': 'Agente',
+      'responsibility': 'Quem aprovou esta contribuição responde por ela.',
+      'agent-notice': 'Ninguém aprovou esta contribuição antes de ela sair — nenhum humano deu o aval a este texto.',
+      'what-is-this': 'O que é isto? →',
+      'legend-title': 'Um caractere no fim de uma linha que sinaliza: este texto foi escrito com apoio de IA.',
+      'legend-intro': 'Quando um comentário, um ticket ou uma mensagem termina em <span class="code">※</span>, uma IA redigiu o texto ou contribuiu para o seu conteúdo. Clicar no caractere leva até aqui e mostra qual modelo participou e o que ele contribuiu.',
+      'raw-intro': 'O endereço seguido estava incompleto, mas trazia este texto:',
+      'legend-approval': 'A aprovação é o endosso: quem publica um texto — apertando “enviar” ou lendo o rascunho de um agente e dando o aval — responde pelo conteúdo, exatamente como por um texto que digitou por conta própria. Só a exceção é marcada à parte: se uma contribuição saiu sem que ninguém a aprovasse, esta página diz isso.',
+      'legend-privacy': 'O que a marca carrega nunca é enviado a um servidor — está no próprio link. Esta página é estática: sem cookies, nada carregado, nada medido.',
+      'legend-skill': 'Para usá-la, basta dar ao seu agente <a href="https://github.com/zauberzeug/colophon">a skill Colophon</a> — ela acrescenta a marca por conta própria.',
+      'disclaimer': 'Declarado pelo agente no momento da escrita. Não é uma medição nem uma revisão independente.',
+      'language': 'Idioma'
+    },
+    zh: {
+      'detail-title': '此内容是在 AI 协助下写成的。',
+      'model': '模型',
+      'contributed': 'AI 贡献了什么',
+      'date': '日期',
+      'agent': '代理',
+      'responsibility': '谁批准了这条内容，谁就为它负责。',
+      'agent-notice': '这条内容发出之前无人批准——没有任何人为这段文字放行。',
+      'what-is-this': '这是什么？→',
+      'legend-title': '行尾的一个符号，表示：这段文字是在 AI 协助下写成的。',
+      'legend-intro': '当评论、工单或消息以 <span class="code">※</span> 结尾，说明有 AI 撰写了文字或参与了内容。点击该符号即来到此页，查看涉及哪个模型以及它贡献了什么。',
+      'raw-intro': '打开的地址不完整，但其中带有这段文字：',
+      'legend-approval': '批准即认可：无论是按下“发送”，还是阅读代理的草稿后放行——发布文字的人对内容负责，与亲手输入的文字完全一样。只有例外情况会被单独标注：如果一条内容在无人批准的情况下发出，本页会如实说明。',
+      'legend-privacy': '标记所承载的内容从不发送到任何服务器——它就在链接本身之中。本页是静态页面：没有 Cookie，不加载任何东西，不做任何统计。',
+      'legend-skill': '想自己使用，只需为代理安装 <a href="https://github.com/zauberzeug/colophon">Colophon 技能</a>——它会自行附上标记。',
+      'disclaimer': '由代理在写作时自行申明。既非测量，也非独立审查。',
+      'language': '语言'
+    },
+    ja: {
+      'detail-title': 'この投稿は AI の支援を受けて書かれました。',
+      'model': 'モデル',
+      'contributed': 'AI が貢献した内容',
+      'date': '日付',
+      'agent': 'エージェント',
+      'responsibility': 'この投稿を承認した人が、その内容に責任を負います。',
+      'agent-notice': 'この投稿は誰にも承認されずに送信されました——この文章に人間はゴーサインを出していません。',
+      'what-is-this': 'これは何？ →',
+      'legend-title': '行末の一文字が示すのは：この文章は AI の支援を受けて書かれた、ということです。',
+      'legend-intro': 'コメント、チケット、メッセージが <span class="code">※</span> で終わっていれば、AI が文章を書いたか、内容に貢献しています。この記号をクリックするとこのページに移動し、どのモデルが関わり、何を貢献したかが表示されます。',
+      'raw-intro': '開いたアドレスは不完全でしたが、次の文章が含まれていました：',
+      'legend-approval': '承認とは是認です。「送信」を押すにせよ、エージェントの下書きを読んでゴーサインを出すにせよ、文章を世に出した人がその内容に責任を負います——自分で打った文章とまったく同じように。例外だけが別途示されます。誰の承認も得ずに投稿が送信された場合、このページはそのことを明示します。',
+      'legend-privacy': 'マークが運ぶ内容がサーバーに送られることはありません——リンクそのものに収められています。このページは静的です。Cookie もなく、何も読み込まず、何も計測しません。',
+      'legend-skill': '自分でも使うには、エージェントに <a href="https://github.com/zauberzeug/colophon">Colophon スキル</a>を与えるだけです——マークは自動で付加されます。',
+      'disclaimer': '執筆時点でのエージェントの申告です。測定でも、独立したレビューでもありません。',
+      'language': '言語'
+    }
+  };
+  var NAMES = { en: 'English', de: 'Deutsch', es: 'Español', fr: 'Français', pt: 'Português', zh: '中文', ja: '日本語' };
+  var STORAGE_KEY = 'colophon.lang';            // the origin is shared with other zauberzeug.github.io pages
+  var nodes = document.querySelectorAll('[data-i18n]');
+  var each = function (list, fn) { Array.prototype.forEach.call(list, fn); };
+  var en = { 'language': 'Language' };
+  each(nodes, function (el) {
+    en[el.getAttribute('data-i18n')] = el.hasAttribute('data-i18n-html') ? el.innerHTML : el.textContent;
+  });
+  STRINGS.en = en;
+
+  var stored = function () { try { return localStorage.getItem(STORAGE_KEY); } catch (e) { return null; } };
+  var store = function (lang) { try { localStorage.setItem(STORAGE_KEY, lang); } catch (e) {} };
+  var detect = function () {
+    var preferred = navigator.languages || [navigator.language];
+    for (var i = 0; i < preferred.length; i++) {
+      var code = String(preferred[i]).toLowerCase().split('-')[0];
+      if (STRINGS[code]) { return code; }
+    }
+    return 'en';
+  };
+
+  var menu = document.getElementById('lang'), summary = menu.firstElementChild, list = menu.lastElementChild;
+  var apply = function (lang) {
+    var t = STRINGS[lang];
+    each(nodes, function (el) {
+      var key = el.getAttribute('data-i18n'), value = t[key] || en[key];
+      if (el.hasAttribute('data-i18n-html')) { el.innerHTML = value; } else { el.textContent = value; }
+    });
+    document.documentElement.lang = lang;
+    summary.textContent = NAMES[lang];
+    summary.lang = lang;
+    summary.setAttribute('aria-label', t['language'] || en['language']);
+    each(list.querySelectorAll('button'), function (button) {
+      button.setAttribute('aria-current', button.lang === lang ? 'true' : 'false');
+    });
+  };
+  Object.keys(NAMES).forEach(function (code) {
+    var item = document.createElement('li'), button = document.createElement('button');
+    button.type = 'button';
+    button.lang = code;
+    button.textContent = NAMES[code];
+    button.addEventListener('click', function () { store(code); apply(code); menu.open = false; });
+    item.appendChild(button);
+    list.appendChild(item);
+  });
+  document.addEventListener('click', function (e) { if (!menu.contains(e.target)) { menu.open = false; } });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') { menu.open = false; } });
+  menu.hidden = false;
+  var initial = stored();
+  apply(STRINGS[initial] ? initial : detect());
+})();
+
 (function () {
   var $ = function (id) { return document.getElementById(id); };
   var params;
